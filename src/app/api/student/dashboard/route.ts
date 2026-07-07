@@ -133,6 +133,7 @@ export async function GET() {
 
   const present = verifiedAttendances.filter((a) => a.status === 'present').length
   const late = verifiedAttendances.filter((a) => a.status === 'late').length
+  const excused = attendances.filter((a) => a.status === 'excused').length
 
   const dashboard: StudentDashboard = {
     student: {
@@ -167,6 +168,7 @@ export async function GET() {
     stats: {
       present,
       late,
+      excused,
       totalCheckIns: sessionsUsed,
       uniqueDaysAttended: attendanceByDay.size,
     },

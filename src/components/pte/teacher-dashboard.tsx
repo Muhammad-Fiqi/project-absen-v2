@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Calendar, Plus, QrCode, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck,
+  Calendar, Plus, QrCode, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck, Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -20,6 +20,7 @@ import { AttendeesView } from './attendees-view'
 import { ReportsView } from './reports-view'
 import { StudentsManage } from './students-manage'
 import { ExtensionRequests } from './extension-requests'
+import { BulkSessionDialog } from './bulk-session-dialog'
 import { toast } from 'sonner'
 
 interface SessionItem {
@@ -64,6 +65,7 @@ export function TeacherDashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedSession, setSelectedSession] = useState<SessionItem | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [tab, setTab] = useState('sessions')
   const [pendingExtCount, setPendingExtCount] = useState(0)
 
@@ -139,6 +141,10 @@ export function TeacherDashboard() {
             <Plus className="h-3.5 w-3.5" />
             Sesi Baru
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)} className="gap-1.5">
+            <Layers className="h-3.5 w-3.5" />
+            Buat Banyak Sesi
+          </Button>
         </div>
       </div>
 
@@ -213,6 +219,7 @@ export function TeacherDashboard() {
       </Tabs>
 
       <CreateSessionDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={loadSessions} days={days} />
+      <BulkSessionDialog open={bulkOpen} onOpenChange={setBulkOpen} onCreated={loadSessions} />
     </div>
   )
 }

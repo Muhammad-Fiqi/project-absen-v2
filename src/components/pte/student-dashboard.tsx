@@ -26,6 +26,7 @@ import {
   X,
   Gift,
   Send,
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,6 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiGet } from '@/lib/api-client'
 import { AttendanceFlow } from './attendance-flow'
 import { RequestExtension } from './request-extension'
+import { AttendanceCalendar } from './attendance-calendar'
 import { toast } from 'sonner'
 import type { StudentDashboard as StudentDashboardData, DayGroup } from '@/lib/types'
 
@@ -200,6 +202,15 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
           sub={`dari ${quota.total} kuota`}
           tone="default"
         />
+        {stats.excused > 0 && (
+          <StatCard
+            icon={ShieldCheck}
+            label="Izin"
+            value={stats.excused}
+            sub="tidak mengurangi kuota"
+            tone="purple"
+          />
+        )}
       </div>
 
       {/* Quota progress */}
@@ -247,6 +258,11 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
           </p>
         </CardContent>
       </Card>
+
+      {/* Calendar heatmap */}
+      <div className="mb-6">
+        <AttendanceCalendar />
+      </div>
 
       {/* TODAY — most prominent */}
       {today && (
@@ -353,13 +369,14 @@ function StatCard({
   label: string
   value: string | number
   sub: string
-  tone: 'primary' | 'amber' | 'destructive' | 'default'
+  tone: 'primary' | 'amber' | 'destructive' | 'default' | 'purple'
 }) {
   const toneClasses = {
     primary: 'bg-primary/10 text-primary',
     amber: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
     destructive: 'bg-destructive/10 text-destructive',
     default: 'bg-muted text-muted-foreground',
+    purple: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300',
   }[tone]
   return (
     <Card className="border-border/60 transition-transform hover:-translate-y-0.5 hover:shadow-md">

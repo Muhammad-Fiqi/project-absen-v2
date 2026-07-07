@@ -125,6 +125,7 @@ export interface StudentDashboard {
   stats: {
     present: number
     late: number
+    excused: number
     totalCheckIns: number
     uniqueDaysAttended: number
   }
