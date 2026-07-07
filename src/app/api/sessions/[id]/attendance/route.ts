@@ -115,9 +115,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // === TIME WINDOW CHECK ===
+  // If teacher has manually set status to 'active', override the time window —
+  // the teacher is present and has opened attendance. This allows demo/testing
+  // and real-world flexibility (teacher opens attendance when ready).
   const opensAt = new Date(session.startTime.getTime() - session.course.graceMinutesBefore * 60 * 1000)
   const closesAt = new Date(session.endTime.getTime() + session.course.graceMinutesAfter * 60 * 1000)
-  const timeOpen = now.getTime() >= opensAt.getTime() && now.getTime() <= closesAt.getTime()
+  const inTimeWindow = now.getTime() >= opensAt.getTime() && now.getTime() <= closesAt.getTime()
+  const timeOpen = session.status === 'active' ? true : inTimeWindow
   let isLate = false
   if (!timeOpen) {
     checks.time = { passed: false, reason: now.getTime() < opensAt.getTime() ? 'Absensi belum dibuka' : 'Absensi sudah ditutup' }

@@ -107,8 +107,11 @@ export function AttendanceFlow({
   }, [open, requiredFactors])
 
   // Try to auto-fetch geo when geo factor is required
+  // Only depend on [open, geo] — check factors.geo inside without depending on it
   useEffect(() => {
-    if (!open || !factors.geo || geo) return
+    if (!open || geo) return
+    // Check if geo factor exists in current factors
+    if (!factors.geo) return
     let cancelled = false
     async function fetchGeo() {
       setGeoLoading(true)
@@ -116,10 +119,16 @@ export function AttendanceFlow({
         const g = await getGeoLocation(12000)
         if (cancelled) return
         setGeo(g)
-        setFactors((prev) => ({ ...prev, geo: { ...prev.geo!, state: 'passed', detail: `Lokasi: ${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}` } }))
+        setFactors((prev) => {
+          if (!prev.geo) return prev
+          return { ...prev, geo: { ...prev.geo, state: 'passed', detail: `Lokasi: ${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}` } }
+        })
       } catch (e) {
         if (cancelled) return
-        setFactors((prev) => ({ ...prev, geo: { ...prev.geo!, state: 'failed', detail: e instanceof Error ? e.message : 'Gagal' } }))
+        setFactors((prev) => {
+          if (!prev.geo) return prev
+          return { ...prev, geo: { ...prev.geo, state: 'failed', detail: e instanceof Error ? e.message : 'Gagal' } }
+        })
       } finally {
         if (!cancelled) setGeoLoading(false)
       }
@@ -128,7 +137,7 @@ export function AttendanceFlow({
     return () => {
       cancelled = true
     }
-  }, [open, factors.geo, geo])
+  }, [open, geo])
 
   function handleQrScan(decoded: string) {
     try {
@@ -144,26 +153,35 @@ export function AttendanceFlow({
   }
 
   // PIN live check (just track entered)
+  // Note: only depend on [pin] — using functional setFactors so no need for factors.pin dep
   useEffect(() => {
-    if (!factors.pin) return
-    if (pin.length === 6) {
-      setFactors((prev) => ({ ...prev, pin: { ...prev.pin!, state: 'passed', detail: 'PIN dimasukkan (diverifikasi saat submit)' } }))
-    } else if (pin.length > 0) {
-      setFactors((prev) => ({ ...prev, pin: { ...prev.pin!, state: 'in-progress', detail: `${pin.length}/6 digit` } }))
-    } else {
-      setFactors((prev) => ({ ...prev, pin: { ...prev.pin!, state: 'pending' } }))
-    }
-  }, [pin, factors.pin])
+    setFactors((prev) => {
+      if (!prev.pin) return prev
+      let state: FactorState = 'pending'
+      let detail: string | undefined
+      if (pin.length === 6) {
+        state = 'passed'
+        detail = 'PIN dimasukkan (diverifikasi saat submit)'
+      } else if (pin.length > 0) {
+        state = 'in-progress'
+        detail = `${pin.length}/6 digit`
+      }
+      // Avoid creating a new object if state hasn't changed (prevents re-render loop)
+      if (prev.pin.state === state && prev.pin.detail === detail) return prev
+      return { ...prev, pin: { ...prev.pin, state, detail } }
+    })
+  }, [pin])
 
-  // Selfie state
+  // Selfie state — only depend on [selfie], use functional update to avoid re-render loop
   useEffect(() => {
-    if (!factors.selfie) return
-    if (selfie) {
-      setFactors((prev) => ({ ...prev, selfie: { ...prev.selfie!, state: 'passed', detail: 'Selfie siap diverifikasi AI' } }))
-    } else {
-      setFactors((prev) => ({ ...prev, selfie: { ...prev.selfie!, state: 'pending' } }))
-    }
-  }, [selfie, factors.selfie])
+    setFactors((prev) => {
+      if (!prev.selfie) return prev
+      const state: FactorState = selfie ? 'passed' : 'pending'
+      const detail = selfie ? 'Selfie siap diverifikasi AI' : undefined
+      if (prev.selfie.state === state && prev.selfie.detail === detail) return prev
+      return { ...prev, selfie: { ...prev.selfie, state, detail } }
+    })
+  }, [selfie])
 
   const passedCount = Object.values(factors).filter((f) => f.state === 'passed').length
   const totalRequired = Object.keys(factors).length

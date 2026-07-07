@@ -26,6 +26,7 @@ model AdminUser {
   createdAt    DateTime @default(now())
   sessions     Session[]
   quotaExts    QuotaExtension[]
+  extRequests  ExtensionRequest[] @relation("ReviewedExtensionRequests")
 }
 
 // ===================== Course =====================
@@ -67,6 +68,7 @@ model Student {
   attendances       Attendance[]
   deviceLogs        DeviceLog[]
   quotaExtensions   QuotaExtension[]
+  extensionRequests ExtensionRequest[]
 }
 
 // ===================== Session =====================
@@ -186,4 +188,23 @@ model QuotaExtension {
   createdAt   DateTime @default(now())
 
   @@index([studentId])
+}
+
+// ===================== Extension Request (student → teacher) =====================
+// Student requests quota extension; teacher reviews and approves/denies.
+model ExtensionRequest {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  requestedSessions Int  // how many sessions the student wants to add
+  reason      String   // student's reason
+  status      String   @default("pending") // pending | approved | denied
+  reviewedById String?
+  reviewedBy  AdminUser? @relation("ReviewedExtensionRequests", fields: [reviewedById], references: [id])
+  reviewedAt  DateTime?
+  reviewNote  String?
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
+  @@index([status])
 }

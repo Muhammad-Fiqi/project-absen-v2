@@ -2,10 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import QRCode from 'qrcode'
-import { QrCode, RefreshCw, KeyRound, Clock, Loader2, Copy, Check, Maximize2 } from 'lucide-react'
+import {
+  QrCode, RefreshCw, KeyRound, Clock, Loader2, Copy, Check, Maximize2,
+  Users, TrendingUp, Video, Building2, Sparkles, Calendar,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import {
   Dialog,
   DialogContent,
@@ -24,7 +28,18 @@ interface QrData {
   serverTime: string
   nextRotationAt: string
   rotationSeconds: number
-  session: { id: string; sessionNumber: number; title: string; room: string | null }
+  attendeeCount: number
+  totalStudents: number
+  session: {
+    id: string
+    sessionNumber: number
+    title: string
+    room: string | null
+    mode: string
+    platform: string | null
+    teacher: string | null
+    topicOfDay: string | null
+  }
   course: { code: string; name: string }
 }
 
@@ -35,7 +50,9 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
   const [countdown, setCountdown] = useState<number>(20)
   const [fullscreen, setFullscreen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [now, setNow] = useState<Date>(new Date())
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchQr = useCallback(async () => {
     try {
@@ -70,8 +87,13 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
         return c - 1
       })
     }, 1000)
+
+    // Live clock tick — every second
+    tickRef.current = setInterval(() => setNow(new Date()), 1000)
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
+      if (tickRef.current) clearInterval(tickRef.current)
     }
   }, [fetchQr])
 
@@ -85,110 +107,236 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
 
   if (loading || !data) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="space-y-4">
+        <div className="h-32 animate-pulse rounded-2xl bg-muted" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr]">
+          <div className="h-56 w-56 animate-pulse rounded-2xl bg-muted" />
+          <div className="space-y-3">
+            <div className="h-20 animate-pulse rounded-xl bg-muted" />
+            <div className="h-20 animate-pulse rounded-xl bg-muted" />
+          </div>
+        </div>
       </div>
     )
   }
 
   const progressPct = ((20 - countdown) / 20) * 100
+  const attendeePct = data.totalStudents > 0 ? Math.round((data.attendeeCount / data.totalStudents) * 100) : 0
+  const ModeIcon = data.session.mode === 'online' ? Video : Building2
+
+  // Format live clock
+  const timeStr = now.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+  const dateStr = now.toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 
   return (
     <>
-      <Card className="overflow-hidden border-primary/30">
-        <CardContent className="p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <QrCode className="h-4 w-4 text-primary" />
-                QR Dinamis Sesi
-              </h3>
-              <p className="text-xs text-muted-foreground">{sessionTitle}</p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => setFullscreen(true)} className="gap-1">
-              <Maximize2 className="h-3.5 w-3.5" /> Layar Penuh
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr]">
-            {/* QR */}
-            <div className="relative mx-auto">
-              <div className="relative rounded-2xl border-2 border-primary/20 bg-white p-3 shadow-sm">
-                <img src={qrDataUrl} alt="QR Absensi" className="h-48 w-48 sm:h-56 sm:w-56" />
-                {/* countdown overlay ring */}
-                <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="48"
-                    fill="none"
-                    stroke="oklch(0.52 0.13 162 / 0.15)"
-                    strokeWidth="2"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="48"
-                    fill="none"
-                    stroke="oklch(0.52 0.13 162)"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeDasharray={`${2 * Math.PI * 48}`}
-                    strokeDashoffset={`${2 * Math.PI * 48 * (1 - progressPct / 100)}`}
-                    className="transition-all duration-1000 ease-linear"
-                  />
-                </svg>
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
-                  {countdown}s
-                </div>
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="flex flex-col justify-center space-y-3">
-              <div className="rounded-xl bg-muted/40 p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <KeyRound className="h-3.5 w-3.5" /> PIN Sesi
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <code className="font-mono text-2xl font-bold tracking-[0.3em]">{data.sessionPin}</code>
-                  <Button variant="ghost" size="sm" onClick={copyPin} className="h-7 w-7 p-0">
-                    {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">Berikan PIN ini ke siswa</p>
-              </div>
-
-              <div className="rounded-xl border border-dashed border-border/60 p-3">
-                <div className="flex items-center gap-1.5 text-xs font-medium">
+      <div className="space-y-4">
+        {/* Live Clock + Attendee Counter (full-width top row) */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* Live Clock */}
+          <Card className="relative overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent transition-transform hover:-translate-y-0.5">
+            <CardContent className="relative p-5">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Clock className="h-3.5 w-3.5 text-primary" />
-                  Berputar setiap {data.rotationSeconds} detik
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  QR lama tidak bisa dipakai lagi — mencegah siswa foto & bagikan QR.
-                </p>
+                  Waktu Server (WIB)
+                </span>
+                <Badge variant="outline" className="gap-1 text-[10px]">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  </span>
+                  LIVE
+                </Badge>
               </div>
+              <div className="font-mono text-4xl font-bold tabular-nums tracking-tight text-foreground sm:text-5xl">
+                {timeStr}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">{dateStr}</div>
+            </CardContent>
+          </Card>
 
-              <Button variant="outline" size="sm" onClick={fetchQr} className="gap-1.5">
-                <RefreshCw className="h-3.5 w-3.5" /> Perbarui QR
+          {/* Attendee Counter */}
+          <Card className="relative overflow-hidden border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent transition-transform hover:-translate-y-0.5">
+            <CardContent className="relative p-5">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Users className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  Kehadiran Live
+                </span>
+                <Badge variant="outline" className="gap-1 text-[10px] text-emerald-700 dark:text-emerald-300">
+                  <TrendingUp className="h-3 w-3" /> {attendeePct}%
+                </Badge>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 sm:text-5xl">
+                  {data.attendeeCount}
+                </span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  dari {data.totalStudents} siswa
+                </span>
+              </div>
+              <Progress value={attendeePct} className="mt-2 h-2 [&>div]:bg-emerald-500" />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {data.attendeeCount === 0
+                  ? 'Belum ada yang absen'
+                  : data.attendeeCount >= data.totalStudents
+                  ? 'Semua siswa sudah absen 🎉'
+                  : `${data.totalStudents - data.attendeeCount} siswa lagi belum absen`}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* QR Display Card */}
+        <Card className="overflow-hidden border-primary/30 shadow-md transition-shadow hover:shadow-lg">
+          <CardContent className="p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <QrCode className="h-4 w-4 text-primary" />
+                  QR Dinamis Sesi
+                </h3>
+                <p className="text-xs text-muted-foreground">{sessionTitle}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setFullscreen(true)} className="gap-1">
+                <Maximize2 className="h-3.5 w-3.5" /> Layar Penuh
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            {/* Session meta row */}
+            <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[11px]">
+              <Badge variant="outline" className="gap-1">
+                <ModeIcon className="h-3 w-3" />
+                {data.session.mode === 'online' ? `Online · ${data.session.platform || 'Online'}` : 'Offline'}
+              </Badge>
+              {data.session.teacher && (
+                <Badge variant="outline" className="gap-1">
+                  <Users className="h-3 w-3" /> {data.session.teacher}
+                </Badge>
+              )}
+              {data.session.room && (
+                <Badge variant="outline" className="gap-1">
+                  <Building2 className="h-3 w-3" /> {data.session.room}
+                </Badge>
+              )}
+              {data.session.topicOfDay && (
+                <Badge variant="outline" className="gap-1 border-primary/30 bg-primary/5 text-primary">
+                  <Sparkles className="h-3 w-3" /> {data.session.topicOfDay}
+                </Badge>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr]">
+              {/* QR with glow */}
+              <div className="relative mx-auto">
+                <div className="absolute -inset-1 rounded-3xl bg-gradient-to-br from-primary/30 via-emerald-500/20 to-primary/30 opacity-60 blur-xl" />
+                <div className="relative rounded-2xl border-2 border-primary/20 bg-white p-3 shadow-md ring-1 ring-primary/10">
+                  <img src={qrDataUrl} alt="QR Absensi" className="h-48 w-48 sm:h-56 sm:w-56" />
+                  {/* countdown overlay ring */}
+                  <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="48"
+                      fill="none"
+                      stroke="oklch(0.52 0.13 162 / 0.15)"
+                      strokeWidth="2"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="48"
+                      fill="none"
+                      stroke="oklch(0.52 0.13 162)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 48}`}
+                      strokeDashoffset={`${2 * Math.PI * 48 * (1 - progressPct / 100)}`}
+                      className="transition-all duration-1000 ease-linear"
+                    />
+                  </svg>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground shadow-sm">
+                    {countdown}s
+                  </div>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="flex flex-col justify-center space-y-3">
+                <div className="rounded-xl bg-muted/40 p-3">
+                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <KeyRound className="h-3.5 w-3.5" /> PIN Sesi
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <code className="font-mono text-2xl font-bold tracking-[0.3em]">{data.sessionPin}</code>
+                    <Button variant="ghost" size="sm" onClick={copyPin} className="h-7 w-7 p-0">
+                      {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Berikan PIN ini ke siswa</p>
+                </div>
+
+                <div className="rounded-xl border border-dashed border-border/60 p-3">
+                  <div className="flex items-center gap-1.5 text-xs font-medium">
+                    <RefreshCw className="h-3.5 w-3.5 text-primary" />
+                    Berputar setiap {data.rotationSeconds} detik
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    QR lama tidak bisa dipakai lagi — mencegah siswa foto & bagikan QR.
+                  </p>
+                </div>
+
+                <Button variant="outline" size="sm" onClick={fetchQr} className="gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5" /> Perbarui QR
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
         <DialogContent className="max-w-2xl border-primary/20">
           <div className="flex flex-col items-center gap-4 p-4">
             <div className="text-center">
               <h2 className="text-xl font-bold">{sessionTitle}</h2>
-              <p className="text-sm text-muted-foreground">Pindai QR ini untuk absen · PIN: <code className="font-mono font-bold text-primary">{data.sessionPin}</code></p>
+              <p className="text-sm text-muted-foreground">
+                Pindai QR ini untuk absen · PIN:{' '}
+                <code className="font-mono font-bold text-primary">{data.sessionPin}</code>
+              </p>
             </div>
-            <div className="relative rounded-3xl border-4 border-primary/20 bg-white p-4">
-              <img src={qrDataUrl} alt="QR Absensi" className="h-80 w-80" />
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-sm font-bold text-primary-foreground">
-                {countdown}s
+            <div className="font-mono text-3xl font-bold tabular-nums text-primary">
+              {timeStr} <span className="text-base font-normal text-muted-foreground">WIB</span>
+            </div>
+            <div className="relative">
+              <div className="absolute -inset-2 rounded-3xl bg-gradient-to-br from-primary/30 via-emerald-500/20 to-primary/30 opacity-70 blur-xl" />
+              <div className="relative rounded-3xl border-4 border-primary/20 bg-white p-4 shadow-lg ring-1 ring-primary/10">
+                <img src={qrDataUrl} alt="QR Absensi" className="h-80 w-80" />
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-sm font-bold text-primary-foreground shadow-sm">
+                  {countdown}s
+                </div>
               </div>
+            </div>
+            {/* Attendee in fullscreen */}
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2">
+              <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-sm font-medium">
+                {data.attendeeCount} dari {data.totalStudents} siswa sudah absen
+              </span>
+              <Badge variant="outline" className="gap-1 text-emerald-700 dark:text-emerald-300">
+                {attendeePct}%
+              </Badge>
             </div>
             <Badge variant="secondary" className="gap-1">
               <Clock className="h-3 w-3" /> Berputar otomatis tiap {data.rotationSeconds} detik

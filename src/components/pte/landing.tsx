@@ -24,16 +24,22 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
     <div className="animate-fade-in">
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/60 bg-grid">
+        {/* Animated gradient blobs */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl animate-blob dark:bg-primary/30" />
+          <div className="absolute -right-24 top-12 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl animate-blob dark:bg-emerald-500/25 [animation-delay:2s]" />
+          <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-primary/15 blur-3xl animate-blob dark:bg-primary/20 [animation-delay:4s]" />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/40 to-background" />
         <div className="relative mx-auto max-w-6xl px-4 py-16 sm:py-24">
           <div className="mx-auto max-w-3xl text-center">
-            <Badge variant="secondary" className="mb-4 gap-1.5 px-3 py-1">
+            <Badge variant="secondary" className="mb-4 gap-1.5 px-3 py-1 shadow-sm">
               <ShieldCheck className="h-3.5 w-3.5" />
               Sistem Absensi Aman & Adil
             </Badge>
             <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
               Absensi PTE Academic{' '}
-              <span className="bg-gradient-to-r from-primary to-emerald-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary via-emerald-600 to-primary bg-clip-text text-transparent animate-gradient-x bg-[length:200%_auto]">
                 Anti-Curang
               </span>
             </h1>
@@ -43,12 +49,21 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
               Kuota personal 10–20 sesi, verifikasi multi-faktor: QR dinamis, PIN, geo-lokasi & wajah AI.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button size="lg" className="w-full gap-2 sm:w-auto" onClick={onSelectStudent}>
+              <Button
+                size="lg"
+                className="w-full gap-2 bg-gradient-to-r from-primary to-emerald-600 shadow-md transition-transform hover:scale-[1.02] hover:shadow-lg sm:w-auto"
+                onClick={onSelectStudent}
+              >
                 <GraduationCap className="h-5 w-5" />
                 Masuk sebagai Siswa
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" className="w-full gap-2 sm:w-auto" onClick={onSelectTeacher}>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full gap-2 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-md sm:w-auto"
+                onClick={onSelectTeacher}
+              >
                 <ShieldCheck className="h-5 w-5" />
                 Masuk sebagai Pengajar
               </Button>
@@ -73,9 +88,12 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
-            <Card key={f.title} className="group relative overflow-hidden border-border/60 transition-all hover:border-primary/40 hover:shadow-md">
+            <Card
+              key={f.title}
+              className="group relative overflow-hidden border-border/60 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-md"
+            >
               <CardContent className="p-5">
-                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-muted text-accent-foreground transition-all group-hover:from-primary group-hover:to-emerald-600 group-hover:text-primary-foreground">
                   <f.icon className="h-5 w-5" />
                 </div>
                 <h3 className="mb-1 font-semibold">{f.title}</h3>
@@ -98,8 +116,13 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
               { step: '02', title: 'Siswa Absen Multi-Faktor', desc: 'Siswa scan QR + masukkan PIN sesi + aktifkan lokasi (+ selfie opsional). Sistem memverifikasi semua.' },
               { step: '03', title: 'Laporan Otomatis', desc: 'Hitung kehadiran otomatis sampai 20 pertemuan. Lihat statistik per siswa & per sesi real-time.' },
             ].map((s) => (
-              <div key={s.step} className="relative rounded-2xl border border-border/60 bg-card p-6">
-                <div className="mb-3 text-4xl font-bold text-primary/20">{s.step}</div>
+              <div
+                key={s.step}
+                className="relative rounded-2xl border border-border/60 bg-card p-6 transition-transform hover:-translate-y-1 hover:shadow-md"
+              >
+                <div className="mb-3 bg-gradient-to-br from-primary to-emerald-600 bg-clip-text text-4xl font-bold text-transparent">
+                  {s.step}
+                </div>
                 <h3 className="mb-2 font-semibold">{s.title}</h3>
                 <p className="text-sm text-muted-foreground">{s.desc}</p>
               </div>

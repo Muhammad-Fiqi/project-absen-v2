@@ -27,6 +27,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const qr: QrPayload = payload
   // Also compute next rotation time
   const nextRotation = (Math.floor(now.getTime() / 1000 / 20) + 1) * 20 * 1000
+  // Real-time attendee count
+  const attendeeCount = await db.attendance.count({
+    where: { sessionId: session.id, verified: true },
+  })
+  const totalStudents = await db.student.count({
+    where: { OR: [{ courseId: session.courseId }, { courseCode: session.course.code }] },
+  })
   return NextResponse.json({
     qr,
     sessionPin: session.sessionPin,
@@ -36,7 +43,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       sessionNumber: session.sessionNumber,
       title: session.title,
       room: session.room,
+      mode: session.mode,
+      platform: session.platform,
+      teacher: session.teacher,
+      topicOfDay: session.topicOfDay,
     },
+    attendeeCount,
+    totalStudents,
     serverTime: now.toISOString(),
     nextRotationAt: new Date(nextRotation).toISOString(),
     rotationSeconds: 20,

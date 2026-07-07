@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Calendar, Plus, QrCode, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift,
+  Calendar, Plus, QrCode, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,6 +19,7 @@ import { QrDisplay } from './qr-display'
 import { AttendeesView } from './attendees-view'
 import { ReportsView } from './reports-view'
 import { StudentsManage } from './students-manage'
+import { ExtensionRequests } from './extension-requests'
 import { toast } from 'sonner'
 
 interface SessionItem {
@@ -64,6 +65,7 @@ export function TeacherDashboard() {
   const [selectedSession, setSelectedSession] = useState<SessionItem | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [tab, setTab] = useState('sessions')
+  const [pendingExtCount, setPendingExtCount] = useState(0)
 
   const loadSessions = useCallback(async () => {
     setLoading(true)
@@ -87,6 +89,25 @@ export function TeacherDashboard() {
   }, [selectedSession])
 
   useEffect(() => { loadSessions() }, [loadSessions])
+
+  // Fetch pending extension request count (auto-refresh every 30s)
+  const loadExtCount = useCallback(async () => {
+    try {
+      const res = await apiGet<{ requests: { id: string }[] }>('/api/extension-requests?status=pending')
+      setPendingExtCount(res.requests.length)
+    } catch {
+      // silent
+    }
+  }, [])
+  useEffect(() => {
+    loadExtCount()
+    const id = setInterval(loadExtCount, 30000)
+    return () => clearInterval(id)
+  }, [loadExtCount])
+  // Also refresh count when extension tab is opened
+  useEffect(() => {
+    if (tab === 'extensions') loadExtCount()
+  }, [tab, loadExtCount])
 
   async function updateStatus(sessionId: string, status: string) {
     try {
@@ -122,15 +143,23 @@ export function TeacherDashboard() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-5">
+        <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-6">
           <TabsTrigger value="sessions" className="gap-1.5"><Calendar className="h-3.5 w-3.5" /> Jadwal</TabsTrigger>
           <TabsTrigger value="qr" className="gap-1.5" disabled={!selectedSession}><QrCode className="h-3.5 w-3.5" /> QR Live</TabsTrigger>
           <TabsTrigger value="attendees" className="gap-1.5" disabled={!selectedSession}><Users className="h-3.5 w-3.5" /> Kehadiran</TabsTrigger>
           <TabsTrigger value="students" className="gap-1.5"><Gift className="h-3.5 w-3.5" /> Siswa & Kuota</TabsTrigger>
+          <TabsTrigger value="extensions" className="gap-1.5 relative">
+            <MailCheck className="h-3.5 w-3.5" /> Permintaan
+            {pendingExtCount > 0 && (
+              <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
+                {pendingExtCount}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="reports" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Laporan</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sessions" className="mt-0">
+        <TabsContent value="sessions" className="mt-0 animate-fade-in">
           {loading ? (
             <div className="flex h-40 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -140,7 +169,7 @@ export function TeacherDashboard() {
           )}
         </TabsContent>
 
-        <TabsContent value="qr" className="mt-0">
+        <TabsContent value="qr" className="mt-0 animate-fade-in">
           {selectedSession ? (
             <div className="space-y-4">
               <SessionInfoBar session={selectedSession} />
@@ -161,7 +190,7 @@ export function TeacherDashboard() {
           ) : <div className="py-12 text-center text-sm text-muted-foreground">Pilih sesi dulu</div>}
         </TabsContent>
 
-        <TabsContent value="attendees" className="mt-0">
+        <TabsContent value="attendees" className="mt-0 animate-fade-in">
           {selectedSession ? (
             <div className="space-y-4">
               <SessionInfoBar session={selectedSession} />
@@ -170,11 +199,15 @@ export function TeacherDashboard() {
           ) : <div className="py-12 text-center text-sm text-muted-foreground">Pilih sesi dulu</div>}
         </TabsContent>
 
-        <TabsContent value="students" className="mt-0">
+        <TabsContent value="students" className="mt-0 animate-fade-in">
           <StudentsManage />
         </TabsContent>
 
-        <TabsContent value="reports" className="mt-0">
+        <TabsContent value="extensions" className="mt-0 animate-fade-in">
+          <ExtensionRequests />
+        </TabsContent>
+
+        <TabsContent value="reports" className="mt-0 animate-fade-in">
           <ReportsView />
         </TabsContent>
       </Tabs>

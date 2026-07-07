@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Calendar,
   CheckCircle2,
@@ -24,6 +24,8 @@ import {
   PackageOpen,
   History,
   X,
+  Gift,
+  Send,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,8 +34,19 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiGet } from '@/lib/api-client'
 import { AttendanceFlow } from './attendance-flow'
+import { RequestExtension } from './request-extension'
 import { toast } from 'sonner'
 import type { StudentDashboard as StudentDashboardData, DayGroup } from '@/lib/types'
+
+interface ExtensionRequestRow {
+  id: string
+  requestedSessions: number
+  reason: string
+  status: 'pending' | 'approved' | 'denied'
+  reviewedAt: string | null
+  reviewNote: string | null
+  createdAt: string
+}
 
 interface StudentDashboardProps {
   initialData: StudentDashboardData
@@ -43,6 +56,25 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
   const [data, setData] = useState(initialData)
   const [refreshing, setRefreshing] = useState(false)
   const [flowSession, setFlowSession] = useState<{ id: string; sessionNumber: number; title: string; date: string; startTime: string; endTime: string; room: string | null; notes: string | null } | null>(null)
+  const [extOpen, setExtOpen] = useState(false)
+  const [extRequests, setExtRequests] = useState<ExtensionRequestRow[]>([])
+  const [extLoading, setExtLoading] = useState(false)
+
+  const loadExtRequests = useCallback(async () => {
+    setExtLoading(true)
+    try {
+      const res = await apiGet<{ requests: ExtensionRequestRow[] }>('/api/extension-requests')
+      setExtRequests(res.requests)
+    } catch {
+      // Silent fail
+    } finally {
+      setExtLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadExtRequests()
+  }, [loadExtRequests])
 
   async function refresh() {
     setRefreshing(true)
@@ -86,7 +118,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
 
       {/* QUOTA BANNER — most important */}
       {quota.exhausted ? (
-        <Card className="mb-6 border-destructive/40 bg-destructive/5">
+        <Card className="mb-6 border-destructive/40 bg-destructive/5 transition-transform hover:-translate-y-0.5">
           <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-destructive/15 text-destructive">
               <PackageOpen className="h-6 w-6" />
@@ -94,14 +126,23 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
             <div className="flex-1">
               <h3 className="font-semibold text-destructive">Kuota sesi Anda habis!</h3>
               <p className="text-sm text-muted-foreground">
-                Anda telah menggunakan {quota.used} dari {quota.total} sesi. Hubungi pengajar/admin untuk perpanjang (extend) kuota agar bisa ikut kelas lagi.
+                Anda telah menggunakan {quota.used} dari {quota.total} sesi. Minta perpanjangan ke pengajar agar bisa ikut kelas lagi.
               </p>
             </div>
-            <Badge variant="destructive" className="shrink-0">{quota.used}/{quota.total} habis</Badge>
+            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+              <Badge variant="destructive" className="justify-center">{quota.used}/{quota.total} habis</Badge>
+              <Button
+                size="sm"
+                onClick={() => setExtOpen(true)}
+                className="gap-1.5 bg-gradient-to-r from-primary to-emerald-600 hover:opacity-90"
+              >
+                <Send className="h-3.5 w-3.5" /> Minta Perpanjangan
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : quota.expiringSoon ? (
-        <Card className="mb-6 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20">
+        <Card className="mb-6 border-amber-400/50 bg-amber-50 transition-transform hover:-translate-y-0.5 dark:bg-amber-950/20">
           <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
               <Zap className="h-6 w-6" />
@@ -112,9 +153,19 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
                 Sisa kuota Anda hanya <strong>{quota.remaining} sesi</strong> dari {quota.total}. Pertimbangkan untuk perpanjang ke pengajar.
               </p>
             </div>
-            <Badge className="shrink-0 gap-1 bg-amber-500 text-white hover:bg-amber-500">
-              <Zap className="h-3 w-3" /> {quota.remaining} tersisa
-            </Badge>
+            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+              <Badge className="justify-center gap-1 bg-amber-500 text-white hover:bg-amber-500">
+                <Zap className="h-3 w-3" /> {quota.remaining} tersisa
+              </Badge>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setExtOpen(true)}
+                className="gap-1.5 border-amber-400 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-950/40"
+              >
+                <Send className="h-3.5 w-3.5" /> Minta Perpanjangan
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}
@@ -199,21 +250,26 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
 
       {/* TODAY — most prominent */}
       {today && (
-        <DayGroupCard
-          day={today}
-          isToday
-          quotaExhausted={quota.exhausted}
-          onCheckIn={(s) => setFlowSession({
-            id: s.id,
-            sessionNumber: s.sessionNumber,
-            title: s.title,
-            date: today.date,
-            startTime: s.startTime,
-            endTime: s.endTime,
-            room: s.room,
-            notes: null,
-          })}
-        />
+        <div className="relative mb-6">
+          {/* Gradient border wrapper for emphasis */}
+          <div className="rounded-2xl bg-gradient-to-r from-primary via-emerald-500 to-primary p-px shadow-md">
+            <DayGroupCard
+              day={today}
+              isToday
+              quotaExhausted={quota.exhausted}
+              onCheckIn={(s) => setFlowSession({
+                id: s.id,
+                sessionNumber: s.sessionNumber,
+                title: s.title,
+                date: today.date,
+                startTime: s.startTime,
+                endTime: s.endTime,
+                room: s.room,
+                notes: null,
+              })}
+            />
+          </div>
+        </div>
       )}
 
       {/* Upcoming + Recent tabs */}
@@ -264,6 +320,24 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
           }}
         />
       )}
+
+      <RequestExtension
+        open={extOpen}
+        onOpenChange={setExtOpen}
+        quota={{ used: quota.used, total: quota.total, remaining: quota.remaining, exhausted: quota.exhausted }}
+        onSubmitted={() => {
+          loadExtRequests()
+          refresh()
+        }}
+      />
+
+      {/* Extension requests history (bottom section) */}
+      <ExtensionRequestsSection
+        requests={extRequests}
+        loading={extLoading}
+        onReload={loadExtRequests}
+        onRequestNew={() => setExtOpen(true)}
+      />
     </div>
   )
 }
@@ -288,7 +362,7 @@ function StatCard({
     default: 'bg-muted text-muted-foreground',
   }[tone]
   return (
-    <Card className="border-border/60">
+    <Card className="border-border/60 transition-transform hover:-translate-y-0.5 hover:shadow-md">
       <CardContent className="p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${toneClasses}`}>
@@ -329,7 +403,7 @@ function DayGroupCard({
   const attendedSession = day.sessions.find((s) => s.id === day.attendedSessionId)
 
   return (
-    <Card className={`border-border/60 ${isToday ? 'border-primary/40 shadow-sm ring-1 ring-primary/15' : ''}`}>
+    <Card className={`border-border/60 overflow-hidden rounded-2xl transition-transform hover:-translate-y-0.5 ${isToday ? 'border-transparent ring-0' : 'shadow-sm'}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -424,6 +498,102 @@ function DayGroupCard({
             )
           })}
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ExtensionRequestsSection({
+  requests,
+  loading,
+  onReload,
+  onRequestNew,
+}: {
+  requests: ExtensionRequestRow[]
+  loading: boolean
+  onReload: () => void
+  onRequestNew: () => void
+}) {
+  const pending = requests.filter((r) => r.status === 'pending').length
+  const approved = requests.filter((r) => r.status === 'approved').length
+  const denied = requests.filter((r) => r.status === 'denied').length
+
+  const statusMeta: Record<ExtensionRequestRow['status'], { label: string; cls: string; icon: typeof Clock }> = {
+    pending: { label: 'Menunggu', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300/40', icon: Clock },
+    approved: { label: 'Disetujui', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300/40', icon: CheckCircle2 },
+    denied: { label: 'Ditolak', cls: 'bg-destructive/10 text-destructive border-destructive/30', icon: X },
+  }
+
+  return (
+    <Card className="mt-6 border-border/60 transition-transform hover:-translate-y-0.5">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Gift className="h-4 w-4 text-primary" />
+            Permintaan Perpanjangan
+          </CardTitle>
+          <Button size="sm" variant="outline" onClick={onRequestNew} className="gap-1.5">
+            <Send className="h-3.5 w-3.5" /> Buat Permintaan
+          </Button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline" className="gap-1 border-amber-300/40 bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+            <Clock className="h-3 w-3" /> {pending} menunggu
+          </Badge>
+          <Badge variant="outline" className="gap-1 border-emerald-300/40 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <CheckCircle2 className="h-3 w-3" /> {approved} disetujui
+          </Badge>
+          <Badge variant="outline" className="gap-1 border-destructive/30 bg-destructive/10 text-destructive">
+            <X className="h-3 w-3" /> {denied} ditolak
+          </Badge>
+          <Button size="sm" variant="ghost" onClick={onReload} disabled={loading} className="h-6 gap-1 px-2 text-[10px]">
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border/60 py-8 text-center">
+            <Gift className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Belum ada permintaan perpanjangan.</p>
+            <p className="mt-1 text-xs text-muted-foreground/80">Klik &quot;Buat Permintaan&quot; untuk mengajukan tambahan sesi ke pengajar.</p>
+          </div>
+        ) : (
+          <div className="max-h-72 space-y-2 overflow-y-auto scrollbar-thin">
+            {requests.map((r) => {
+              const meta = statusMeta[r.status]
+              return (
+                <div key={r.id} className="rounded-xl border border-border/60 p-3 transition-colors hover:bg-muted/30">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className={`gap-1 text-[10px] ${meta.cls}`}>
+                          <meta.icon className="h-3 w-3" /> {meta.label}
+                        </Badge>
+                        <span className="text-sm font-semibold text-primary">+{r.requestedSessions} sesi</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(r.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{r.reason}</p>
+                      {r.reviewNote && (
+                        <p className="mt-1 rounded bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">
+                          <strong>Catatan pengajar:</strong> {r.reviewNote}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

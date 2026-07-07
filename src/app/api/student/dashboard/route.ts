@@ -99,9 +99,11 @@ export async function GET() {
       attendedSessionId,
       sessions: daySessions.map((s) => {
         const window = checkInWindow(s.startTime, s.endTime, course.graceMinutesBefore, course.graceMinutesAfter, now)
-        // Student can check in if: window open, session not cancelled/completed, hasn't attended any session today, quota not exhausted, no existing attendance for THIS session
+        // If teacher manually set status to 'active', the check-in window is forced open
+        const effectivelyOpen = s.status === 'active' ? true : window.open
+        // Student can check in if: window open (or session active), session not cancelled/completed, hasn't attended any session today, quota not exhausted, no existing attendance for THIS session
         const canCheckIn =
-          window.open &&
+          effectivelyOpen &&
           s.status !== 'cancelled' &&
           s.status !== 'completed' &&
           !attendedSessionId &&
@@ -119,7 +121,7 @@ export async function GET() {
           teacher: s.teacher,
           status: s.status as 'scheduled' | 'active' | 'completed' | 'cancelled',
           canCheckIn,
-          checkInWindow: window,
+          checkInWindow: { ...window, open: effectivelyOpen, message: s.status === 'active' && !window.open ? 'Absensi dibuka oleh pengajar' : window.message },
         }
       }),
     }
