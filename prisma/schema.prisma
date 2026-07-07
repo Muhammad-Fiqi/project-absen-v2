@@ -1,0 +1,189 @@
+// PTE Attendance System - Prisma Schema
+// Database: SQLite (cheap, file-based, easy to deploy)
+//
+// BUSINESS MODEL:
+// - A course day has MULTIPLE sessions (offline at office + online via Meet/Discord)
+// - All sessions in one day cover the SAME material (topicOfDay) → student only needs ONE per day
+// - Each student has a PERSONAL session quota (10–20 sessions)
+// - When quota runs out, student must EXTEND to continue
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===================== Admin / Teacher =====================
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("teacher") // "admin" | "teacher"
+  createdAt    DateTime @default(now())
+  sessions     Session[]
+  quotaExts    QuotaExtension[]
+}
+
+// ===================== Course =====================
+model Course {
+  id                  String    @id @default(cuid())
+  code                String    @unique // e.g. "PTE-2024-A"
+  name                String
+  description         String?
+  defaultQuota        Int       @default(15) // default session quota for new students (10–20)
+  totalSessions       Int       @default(20) // reference target (informational)
+  room                String?
+  locationLat         Float?
+  locationLng         Float?
+  geoRadiusM          Int       @default(150) // geo-fence radius in meters
+  graceMinutesBefore  Int       @default(10)
+  graceMinutesAfter   Int       @default(20)
+  requiredFactors     String    @default("qr,pin,geo") // comma-separated: qr,pin,geo,selfie
+  createdAt           DateTime  @default(now())
+  sessions            Session[]
+  students            Student[]
+}
+
+// ===================== Student =====================
+model Student {
+  id                String   @id @default(cuid())
+  studentCode       String   @unique // e.g. "PTE001"
+  name              String
+  email             String?
+  phone             String?
+  courseCode        String
+  courseId          String?
+  course            Course?  @relation(fields: [courseId], references: [id])
+  pinHash           String?  // personal PIN for verification
+  // Quota system
+  sessionQuota      Int      @default(15) // total allowed sessions (10–20, personal)
+  quotaExtendedAt   DateTime? // last time quota was extended
+  quotaNote         String?   // free-text note about extensions
+  createdAt         DateTime @default(now())
+  attendances       Attendance[]
+  deviceLogs        DeviceLog[]
+  quotaExtensions   QuotaExtension[]
+}
+
+// ===================== Session =====================
+// A Session = ONE time-slot on ONE day for ONE mode (offline/online).
+// Multiple sessions per day share topicOfDay (material repeats).
+model Session {
+  id             String   @id @default(cuid())
+  courseId       String
+  course         Course   @relation(fields: [courseId], references: [id])
+  sessionNumber  Int      // display order (SESI 1, 2, 3...) — NOT unique across course
+  title          String   // e.g. "SESI 1"
+  date           DateTime // the calendar day (normalized to midnight local)
+  startTime      DateTime
+  endTime        DateTime
+  // Multi-session-per-day fields
+  mode           String   @default("offline") // "offline" | "online"
+  platform       String?  // "Office" | "Google Meet" | "Discord" | "Zoom"
+  room           String?  // physical room (offline) or meeting link (online)
+  teacher        String?  // teacher name e.g. "Mr Dimas"
+  topicOfDay     String?  // shared material for the day (e.g. "Speaking: Read Aloud")
+  // Geo / verification
+  locationLat    Float?
+  locationLng    Float?
+  geoRadiusM     Int?
+  status         String   @default("scheduled") // scheduled | active | completed | cancelled
+  sessionPin     String?  // 6-digit PIN given by teacher for this session
+  qrSecret       String?  // secret used to sign rotating QR tokens
+  notes          String?
+  createdById    String?
+  createdBy      AdminUser? @relation(fields: [createdById], references: [id])
+  createdAt      DateTime @default(now())
+  attendances    Attendance[]
+  qrTokens       QrToken[]
+
+  @@index([courseId, date])
+  @@index([date, mode])
+  @@index([status])
+}
+
+// ===================== Attendance =====================
+model Attendance {
+  id                String   @id @default(cuid())
+  sessionId         String
+  session           Session  @relation(fields: [sessionId], references: [id])
+  studentId         String
+  student           Student  @relation(fields: [studentId], references: [id])
+  status            String   @default("present") // present | late | absent | excused
+  method            String   @default("qr") // qr | button | multi
+  checkInTime       DateTime @default(now())
+  // Day key (YYYY-MM-DD) — used to enforce "one session per day" rule
+  dayKey            String
+  // Anti-fraud fields
+  deviceFingerprint String?
+  ipAddress         String?
+  geoLat            Float?
+  geoLng            Float?
+  geoVerified       Boolean  @default(false)
+  geoDistanceM      Float?
+  selfieVerified    Boolean  @default(false)
+  selfieImageUrl    String?
+  pinVerified       Boolean  @default(false)
+  qrVerified        Boolean  @default(false)
+  verified          Boolean  @default(false) // overall verification
+  factorsPassed     Int      @default(0)
+  factorsRequired   Int      @default(2)
+  flagged           Boolean  @default(false) // flagged for review
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  @@unique([sessionId, studentId])
+  @@index([studentId, dayKey])
+  @@index([studentId, verified])
+}
+
+// ===================== QR Token (rotating) =====================
+model QrToken {
+  id         String   @id @default(cuid())
+  sessionId  String
+  session    Session  @relation(fields: [sessionId], references: [id])
+  token      String   @unique // the rotating code shown in QR
+  hmac       String   // signature to prevent forgery
+  issuedAt   DateTime @default(now())
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+
+  @@index([sessionId, expiresAt])
+}
+
+// ===================== Device Log (anti-spoofing) =====================
+model DeviceLog {
+  id                 String   @id @default(cuid())
+  deviceFingerprint  String
+  studentId          String
+  student            Student  @relation(fields: [studentId], references: [id])
+  firstSeen          DateTime @default(now())
+  lastSeen           DateTime @updatedAt
+  ipAddress          String?
+  userAgent          String?
+  usageCount         Int      @default(1)
+
+  @@unique([deviceFingerprint, studentId])
+  @@index([deviceFingerprint])
+}
+
+// ===================== Quota Extension (audit log) =====================
+// Tracks every time a student's quota is increased/extended.
+model QuotaExtension {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  adminId     String?
+  admin       AdminUser? @relation(fields: [adminId], references: [id])
+  oldQuota    Int
+  newQuota    Int
+  addedSessions Int    // newQuota - oldQuota (positive)
+  reason      String?  // e.g. "Perpanjangan paket 10 sesi"
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
+}
