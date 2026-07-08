@@ -210,3 +210,30 @@ Stage Summary:
 - Total API routes: 13 endpoints serving student/teacher/admin flows
 - Total PTE components: 17 frontend components
 - Sandbox networking limitation prevented agent-browser E2E verification, but server compiles and serves requests cleanly
+
+---
+Task ID: DEPLOY
+Agent: main
+Task: Prepare production deployment support (Turso adapter, Docker, setup API, deployment guide)
+
+Work Log:
+- Installed @prisma/adapter-libsql + @libsql/client for Turso cloud database support
+- Updated src/lib/db.ts: auto-detects libsql:// URL and uses PrismaLibSql adapter, otherwise standard SQLite
+- Kept Prisma schema provider as "sqlite" (compatible with both local file and Turso via adapter)
+- Created Dockerfile (multi-stage build: node:20-alpine, standalone output, health check)
+- Created .dockerignore (exclude node_modules, .next, .env, db files)
+- Created docker-compose.yml (app service + optional Caddy, persistent volume for DB)
+- Created /api/setup/route.ts (POST: first-time seed, GET: check setup status)
+- Created .env.production.example
+- Created DEPLOY.md with 3 deployment options:
+  - Option 1: Vercel + Turso (FREE) — recommended for beginners
+  - Option 2: Railway ($5/month) — easiest, one-click deploy
+  - Option 3: VPS + Docker ($3-5/month) — most control, cheapest long-term
+- Updated .env with documentation comments for both local and Turso modes
+
+Stage Summary:
+- App is now deployment-ready for all 3 major platforms
+- Database layer supports seamless switch between local SQLite and Turso cloud
+- First-time setup API endpoint allows easy initial data population on any platform
+- Docker + docker-compose ready for VPS deployment
+- Full deployment guide written in DEPLOY.md (Indonesian)

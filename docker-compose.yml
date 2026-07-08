@@ -1,0 +1,34 @@
+services:
+  app:
+    build: .
+    container_name: pte-attendance
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - pte-data:/app/db
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+
+  # Optional: Caddy as reverse proxy with auto-SSL
+  # Uncomment if you want Caddy in Docker too
+  # caddy:
+  #   image: caddy:alpine
+  #   container_name: pte-caddy
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile
+  #     - caddy-data:/data
+  #     - caddy-config:/config
+  #   depends_on:
+  #     - app
+
+volumes:
+  pte-data:
+  # caddy-data:
+  # caddy-config:

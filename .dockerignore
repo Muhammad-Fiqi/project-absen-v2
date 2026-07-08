@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.gitignore
+*.md
+db/*.db
+db/*.db-journal
+dev.log
+server.log
+*.tar
+upload/
+agent-ctx/
+.env

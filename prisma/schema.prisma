@@ -1,5 +1,7 @@
 // PTE Attendance System - Prisma Schema
-// Database: SQLite (cheap, file-based, easy to deploy)
+// Database: SQLite (local) or Turso Cloud (via @prisma/adapter-libsql)
+// Local dev: DATABASE_URL=file:db/custom.db
+// Turso:     DATABASE_URL=libsql://your-db.turso.io + DATABASE_AUTH_TOKEN=...
 //
 // BUSINESS MODEL:
 // - A course day has MULTIPLE sessions (offline at office + online via Meet/Discord)
