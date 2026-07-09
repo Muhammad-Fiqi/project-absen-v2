@@ -15,10 +15,27 @@ import { toast } from 'sonner'
 
 type View = 'loading' | 'landing' | 'student-login' | 'teacher-login' | 'student-home' | 'teacher-home'
 
+interface StudentInfo {
+  id: string
+  studentCode: string
+  name: string
+  email: string | null
+  phone: string | null
+  courseCode: string
+  courseId: string | null
+}
+
+interface TeacherInfo {
+  id: string
+  username: string
+  name: string
+  role: string
+}
+
 interface MeResponse {
   role: 'student' | 'teacher' | 'admin' | null
-  student?: { id: string; studentCode: string; name: string; email: string | null; phone: string | null; courseCode: string; courseId: string | null }
-  teacher?: { id: string; username: string; name: string; role: 'admin' | 'teacher' }
+  student?: StudentInfo
+  teacher?: TeacherInfo
 }
 
 export default function Home() {
@@ -39,6 +56,7 @@ export default function Home() {
     }
   }, [])
 
+  // Check auth on mount
   useEffect(() => {
     let cancelled = false
     apiGet<MeResponse>('/api/me')
@@ -52,9 +70,7 @@ export default function Home() {
       .catch(() => {
         if (!cancelled) setView('landing')
       })
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   // Load student dashboard data when entering student home
@@ -82,11 +98,21 @@ export default function Home() {
     }
   }
 
-  function handleStudentLoginSuccess() {
-    checkAuth()
+  // Student login success: use the response data directly
+  function handleStudentLoginSuccess(student?: StudentInfo) {
+    if (student) {
+      setMe({ role: 'student', student })
+    }
+    setView('student-home')
+    loadStartedRef.current = false
   }
-  function handleTeacherLoginSuccess() {
-    checkAuth()
+
+  // Teacher login success: use the response data directly
+  function handleTeacherLoginSuccess(teacher?: TeacherInfo) {
+    if (teacher) {
+      setMe({ role: teacher.role as 'admin' | 'teacher', teacher })
+    }
+    setView('teacher-home')
   }
 
   const headerUser = me?.student

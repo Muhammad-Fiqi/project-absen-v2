@@ -20,26 +20,54 @@ function decode<T>(s: string): T | null {
   }
 }
 
-export async function setStudentSession(student: StudentInfo) {
-  const store = await cookies()
-  store.set(STUDENT_COOKIE, encode({ ...student, ts: Date.now() }), {
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: '/',
-  })
+// ── Cookie options for NextResponse ──
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  maxAge: 60 * 60 * 24 * 7, // 7 days
+  path: '/' as const,
 }
 
-export async function setTeacherSession(teacher: TeacherInfo) {
-  const store = await cookies()
-  store.set(TEACHER_COOKIE, encode({ ...teacher, ts: Date.now() }), {
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7,
-    path: '/',
-  })
+// ── Set session by returning cookie value + options ──
+// Route handlers MUST use these to set cookies on the NextResponse object,
+// because cookies().set() does NOT work reliably with NextResponse.json().
+
+export function buildStudentCookie(student: StudentInfo) {
+  return {
+    name: STUDENT_COOKIE,
+    value: encode({ ...student, ts: Date.now() }),
+    ...COOKIE_OPTIONS,
+  }
 }
 
+export function buildTeacherCookie(teacher: TeacherInfo) {
+  return {
+    name: TEACHER_COOKIE,
+    value: encode({ ...teacher, ts: Date.now() }),
+    ...COOKIE_OPTIONS,
+  }
+}
+
+// ── Apply session cookie to a NextResponse ──
+export function applyStudentCookie(res: NextResponse, student: StudentInfo) {
+  const c = buildStudentCookie(student)
+  res.cookies.set(c.name, c.value, c)
+  return res
+}
+
+export function applyTeacherCookie(res: NextResponse, teacher: TeacherInfo) {
+  const c = buildTeacherCookie(teacher)
+  res.cookies.set(c.name, c.value, c)
+  return res
+}
+
+export function clearAuthCookies(res: NextResponse) {
+  res.cookies.delete(STUDENT_COOKIE)
+  res.cookies.delete(TEACHER_COOKIE)
+  return res
+}
+
+// ── Read session from incoming request (uses cookies() - reads are fine) ──
 export async function getStudentSession(): Promise<StudentInfo | null> {
   const store = await cookies()
   const raw = store.get(STUDENT_COOKIE)?.value
@@ -52,15 +80,6 @@ export async function getTeacherSession(): Promise<TeacherInfo | null> {
   const raw = store.get(TEACHER_COOKIE)?.value
   if (!raw) return null
   return decode<TeacherInfo>(raw)
-}
-
-export async function clearStudentSession() {
-  const store = await cookies()
-  store.delete(STUDENT_COOKIE)
-}
-export async function clearTeacherSession() {
-  const store = await cookies()
-  store.delete(TEACHER_COOKIE)
 }
 
 // Re-validate student against DB
@@ -93,4 +112,4 @@ export async function getCurrentTeacher(): Promise<TeacherInfo | null> {
   }
 }
 
-export { encode, decode, SECRET }
+export { encode, decode, SECRET, STUDENT_COOKIE, TEACHER_COOKIE }

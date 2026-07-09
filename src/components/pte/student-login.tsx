@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 
 interface StudentLoginProps {
   onBack: () => void
-  onSuccess: () => void
+  onSuccess: (data?: { id: string; studentCode: string; name: string; email: string | null; phone: string | null; courseCode: string; courseId: string | null }) => void
 }
 
 export function StudentLogin({ onBack, onSuccess }: StudentLoginProps) {
@@ -24,9 +24,12 @@ export function StudentLogin({ onBack, onSuccess }: StudentLoginProps) {
     if (!studentCode || !pin) return
     setLoading(true)
     try {
-      await apiPost('/api/auth/student', { studentCode, pin })
+      const res = await apiPost<{
+        success: boolean
+        student: { id: string; studentCode: string; name: string; email: string | null; phone: string | null; courseCode: string; courseId: string | null; courseName?: string }
+      }>('/api/auth/student', { studentCode, pin })
       toast.success('Berhasil masuk!')
-      onSuccess()
+      onSuccess(res.student)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal masuk')
     } finally {

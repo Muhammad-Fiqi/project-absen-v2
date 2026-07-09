@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyPin } from '@/lib/security'
-import { setTeacherSession } from '@/lib/auth'
+import { applyTeacherCookie } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
@@ -19,13 +19,15 @@ export async function POST(req: NextRequest) {
     if (!verifyPin(password, user.passwordHash)) {
       return NextResponse.json({ error: 'Password salah' }, { status: 401 })
     }
-    await setTeacherSession({
+
+    const teacherInfo = {
       id: user.id,
       username: user.username,
       name: user.name,
       role: user.role as 'admin' | 'teacher',
-    })
-    return NextResponse.json({
+    }
+
+    const res = NextResponse.json({
       success: true,
       teacher: {
         id: user.id,
@@ -34,6 +36,9 @@ export async function POST(req: NextRequest) {
         role: user.role,
       },
     })
+
+    // Set cookie directly on the response object
+    return applyTeacherCookie(res, teacherInfo)
   } catch (e) {
     console.error('teacher login error', e)
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 })

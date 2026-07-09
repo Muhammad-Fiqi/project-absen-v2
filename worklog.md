@@ -237,3 +237,25 @@ Stage Summary:
 - First-time setup API endpoint allows easy initial data population on any platform
 - Docker + docker-compose ready for VPS deployment
 - Full deployment guide written in DEPLOY.md (Indonesian)
+
+---
+Task ID: FIX-LOGIN
+Agent: main
+Task: Fix login not redirecting to dashboard (cookie not persisting in Next.js Route Handlers)
+
+Work Log:
+- Root cause: `cookies().set()` from `next/headers` does NOT reliably set cookies when a `NextResponse.json()` is returned in Route Handlers. The cookies set via `cookies().set()` were being lost.
+- Fix 1: Rewrote `src/lib/auth.ts` — removed `setStudentSession`/`setTeacherSession` (which used `cookies().set()`), replaced with `applyStudentCookie`/`applyTeacherCookie`/`clearAuthCookies` that set cookies directly on the `NextResponse` object via `res.cookies.set()`
+- Fix 2: Updated `src/app/api/auth/student/route.ts` — now builds `NextResponse.json()` first, then calls `applyStudentCookie(res, studentInfo)` to attach cookie before returning
+- Fix 3: Updated `src/app/api/auth/teacher/route.ts` — same pattern with `applyTeacherCookie(res, teacherInfo)`
+- Fix 4: Updated `src/app/api/auth/logout/route.ts` — uses `clearAuthCookies(res)` to clear both cookies on the response
+- Fix 5: Updated login components (`student-login.tsx`, `teacher-login.tsx`) to pass response data back via `onSuccess(data)` callback
+- Fix 6: Updated `page.tsx` — `handleStudentLoginSuccess` and `handleTeacherLoginSuccess` now receive user data from the login response and set view directly, eliminating dependency on a second `/api/me` round-trip
+- Verified with curl: login returns `set-cookie: pte_student=...; Path=/; HttpOnly; SameSite=lax`, /api/me reads cookie correctly
+- Verified with agent-browser: student login → "Halo, Andi!" dashboard, teacher login → "Panel Pengajar" with 6 tabs, logout → back to landing
+- Lint: 0 errors, 0 warnings
+
+Stage Summary:
+- Login bug completely fixed — both student and teacher login now properly redirect to dashboard
+- Cookie mechanism changed from unreliable `cookies().set()` to reliable `NextResponse.cookies.set()`
+- Login flow is now faster (no extra /api/me round-trip needed, data comes directly from login response)

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyPin } from '@/lib/security'
-import { setStudentSession } from '@/lib/auth'
+import { applyStudentCookie } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
     if (!student.pinHash || !verifyPin(pin, student.pinHash)) {
       return NextResponse.json({ error: 'PIN salah' }, { status: 401 })
     }
-    await setStudentSession({
+
+    const studentInfo = {
       id: student.id,
       studentCode: student.studentCode,
       name: student.name,
@@ -30,8 +31,9 @@ export async function POST(req: NextRequest) {
       phone: student.phone,
       courseCode: student.courseCode,
       courseId: student.courseId,
-    })
-    return NextResponse.json({
+    }
+
+    const res = NextResponse.json({
       success: true,
       student: {
         id: student.id,
@@ -41,6 +43,9 @@ export async function POST(req: NextRequest) {
         courseName: student.course?.name,
       },
     })
+
+    // Set cookie directly on the response object
+    return applyStudentCookie(res, studentInfo)
   } catch (e) {
     console.error('student login error', e)
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 })
@@ -48,7 +53,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
-  const store = await import('next/headers').then((m) => m.cookies())
-  store.delete('pte_student')
   return NextResponse.json({ success: true })
 }

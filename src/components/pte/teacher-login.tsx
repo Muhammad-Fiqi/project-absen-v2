@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 
 interface TeacherLoginProps {
   onBack: () => void
-  onSuccess: () => void
+  onSuccess: (data?: { id: string; username: string; name: string; role: string }) => void
 }
 
 export function TeacherLogin({ onBack, onSuccess }: TeacherLoginProps) {
@@ -24,9 +24,12 @@ export function TeacherLogin({ onBack, onSuccess }: TeacherLoginProps) {
     if (!username || !password) return
     setLoading(true)
     try {
-      await apiPost('/api/auth/teacher', { username, password })
+      const res = await apiPost<{
+        success: boolean
+        teacher: { id: string; username: string; name: string; role: string }
+      }>('/api/auth/teacher', { username, password })
       toast.success('Berhasil masuk!')
-      onSuccess()
+      onSuccess(res.teacher)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal masuk')
     } finally {
