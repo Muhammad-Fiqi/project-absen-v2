@@ -85,7 +85,6 @@ export async function POST(
         sessionId,
         studentId,
         status: 'excused',
-        method: 'button',
         dayKey: dk,
         notes: `Izin: ${note || 'Tidak ada keterangan'}`,
         verified: false, // excused does NOT consume quota

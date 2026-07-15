@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "PTE Attendance — Sistem Absensi Anti-Curang",
-  description: "Aplikasi absensi PTE Academic dengan verifikasi multi-faktor: QR dinamis, PIN sesi, geo-fencing, dan verifikasi wajah AI.",
-  keywords: ["PTE", "attendance", "absensi", "kursus", "QR", "anti-curang"],
+  description: "Aplikasi absensi PTE Academic dengan QR dinamis. Siswa scan QR untuk hadir, pengajar kelola sesi & pantau kehadiran real-time.",
+  keywords: ["PTE", "attendance", "absensi", "kursus", "QR"],
   authors: [{ name: "PTE Course" }],
 };
 

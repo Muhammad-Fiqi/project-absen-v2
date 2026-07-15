@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, CheckCircle2, Clock, XCircle, AlertTriangle, QrCode, KeyRound, MapPin, Camera, Search, Users, ShieldCheck } from 'lucide-react'
+import { Loader2, CheckCircle2, Clock, XCircle, QrCode, Search, Users, ShieldCheck } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { apiGet, apiPost } from '@/lib/api-client'
 import { toast } from 'sonner'
-import type { AttendanceStatus, AttendanceMethod } from '@/lib/types'
+import type { AttendanceStatus } from '@/lib/types'
 
 interface Attendee {
   studentId: string
@@ -29,18 +29,10 @@ interface Attendee {
   attendance: {
     id: string
     status: AttendanceStatus
-    method: AttendanceMethod
     checkInTime: string
-    verified: boolean
-    factorsPassed: number
-    factorsRequired: number
-    geoVerified: boolean
-    geoDistanceM: number | null
-    pinVerified: boolean
     qrVerified: boolean
-    selfieVerified: boolean
-    flagged: boolean
-    ipAddress: string | null
+    verified: boolean
+    notes: string | null
   } | null
 }
 
@@ -128,17 +120,15 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
   const late = data.attendees.filter((a) => a.attendance?.status === 'late').length
   const absent = data.attendees.filter((a) => !a.attendance || a.attendance.status === 'absent').length
   const excused = data.attendees.filter((a) => a.attendance?.status === 'excused').length
-  const flagged = data.attendees.filter((a) => a.attendance?.flagged).length
 
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <MiniStat label="Hadir" value={present} cls="text-primary" icon={CheckCircle2} />
         <MiniStat label="Terlambat" value={late} cls="text-amber-600" icon={Clock} />
         <MiniStat label="Absen" value={absent} cls="text-destructive" icon={XCircle} />
         <MiniStat label="Izin" value={excused} cls="text-purple-600" icon={ShieldCheck} />
-        <MiniStat label="Ditandai" value={flagged} cls="text-amber-600" icon={AlertTriangle} />
       </div>
 
       {/* Search */}
@@ -175,9 +165,6 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">{a.name}</span>
-                      {a.attendance?.flagged && (
-                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                      )}
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span>{a.studentCode}</span>
@@ -185,15 +172,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                         <>
                           <span>·</span>
                           <span>{new Date(a.attendance.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span className="flex items-center gap-0.5">
-                            {a.attendance.qrVerified && <QrCode className="h-2.5 w-2.5 text-primary" />}
-                            {a.attendance.pinVerified && <KeyRound className="h-2.5 w-2.5 text-primary" />}
-                            {a.attendance.geoVerified && <MapPin className="h-2.5 w-2.5 text-primary" />}
-                            {a.attendance.selfieVerified && <Camera className="h-2.5 w-2.5 text-primary" />}
-                          </span>
-                          {a.attendance.geoDistanceM != null && (
-                            <span className="text-muted-foreground/70">· {a.attendance.geoDistanceM}m</span>
-                          )}
+                          {a.attendance.qrVerified && <QrCode className="h-2.5 w-2.5 text-primary" />}
                         </>
                       ) : (
                         <span>· belum absen</span>

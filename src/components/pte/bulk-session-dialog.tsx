@@ -71,6 +71,7 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
   const todayKey = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(todayKey)
   const [topicOfDay, setTopicOfDay] = useState('')
+  const [maxAttendees, setMaxAttendees] = useState(10)
   const [offlineRows, setOfflineRows] = useState<SessionRow[]>([])
   const [onlineRows, setOnlineRows] = useState<SessionRow[]>([])
 
@@ -168,6 +169,7 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
         courseId: rep.course.id,
         date,
         topicOfDay: topicOfDay || undefined,
+        maxAttendees,
         sessions: allRows.map((r) => ({
           startTime: r.startTime,
           endTime: r.endTime,
@@ -202,7 +204,7 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
 
         <div className="space-y-4">
           {/* Date & Topic */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Tanggal</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -213,6 +215,16 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
                 value={topicOfDay}
                 onChange={(e) => setTopicOfDay(e.target.value)}
                 placeholder="Mis. Speaking: Read Aloud"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Maks Peserta</Label>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={maxAttendees}
+                onChange={(e) => setMaxAttendees(Math.max(1, Math.min(100, Number(e.target.value))))}
               />
             </div>
           </div>

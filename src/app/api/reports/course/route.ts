@@ -30,7 +30,6 @@ export async function GET(req: NextRequest) {
     const atts = verifiedAttendances.filter((a) => a.studentId === st.id)
     const present = atts.filter((a) => a.status === 'present').length
     const late = atts.filter((a) => a.status === 'late').length
-    const flagged = atts.filter((a) => a.flagged).length
     const used = atts.length
     const remaining = Math.max(0, st.sessionQuota - used)
     const uniqueDays = new Set(atts.map((a) => a.dayKey)).size
@@ -46,7 +45,6 @@ export async function GET(req: NextRequest) {
       quotaExhausted: remaining <= 0,
       present,
       late,
-      flagged,
       uniqueDaysAttended: uniqueDays,
       quotaUsagePct: st.sessionQuota > 0 ? Math.round((used / st.sessionQuota) * 100) : 0,
       quotaExtendedAt: st.quotaExtendedAt?.toISOString() ?? null,
@@ -78,7 +76,6 @@ export async function GET(req: NextRequest) {
   // Overall
   const totalPresent = verifiedAttendances.filter((a) => a.status === 'present').length
   const totalLate = verifiedAttendances.filter((a) => a.status === 'late').length
-  const totalFlagged = verifiedAttendances.filter((a) => a.flagged).length
   const totalQuota = course.students.reduce((sum, s) => sum + s.sessionQuota, 0)
   const totalUsed = verifiedAttendances.length
   const quotaUsagePct = totalQuota > 0 ? Math.round((totalUsed / totalQuota) * 100) : 0
@@ -104,7 +101,6 @@ export async function GET(req: NextRequest) {
     overall: {
       totalPresent,
       totalLate,
-      totalFlagged,
       totalCheckIns: totalUsed,
       totalQuota,
       quotaUsagePct,

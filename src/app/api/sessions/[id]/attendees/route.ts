@@ -36,18 +36,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         ? {
             id: a.id,
             status: a.status,
-            method: a.method,
             checkInTime: a.checkInTime.toISOString(),
             verified: a.verified,
-            factorsPassed: a.factorsPassed,
-            factorsRequired: a.factorsRequired,
-            geoVerified: a.geoVerified,
-            geoDistanceM: a.geoDistanceM,
-            pinVerified: a.pinVerified,
             qrVerified: a.qrVerified,
-            selfieVerified: a.selfieVerified,
-            flagged: a.flagged,
-            ipAddress: a.ipAddress,
+            notes: a.notes,
           }
         : null,
     }

@@ -21,7 +21,7 @@ export async function GET() {
   // Gather attendance aggregates per student
   const attendances = await db.attendance.findMany({
     where: { studentId: { in: students.map((s) => s.id) }, verified: true },
-    select: { studentId: true, checkInTime: true, dayKey: true, flagged: true },
+    select: { studentId: true, checkInTime: true, dayKey: true },
   })
   const rows: StudentManageRow[] = students.map((s) => {
     const atts = attendances.filter((a) => a.studentId === s.id)
@@ -42,7 +42,6 @@ export async function GET() {
       quotaExtendedAt: s.quotaExtendedAt?.toISOString() ?? null,
       lastCheckIn: lastCheckIn?.toISOString() ?? null,
       uniqueDaysAttended: uniqueDays,
-      flaggedCount: atts.filter((a) => a.flagged).length,
       extensions: s.quotaExtensions.map((e) => ({
         id: e.id,
         oldQuota: e.oldQuota,

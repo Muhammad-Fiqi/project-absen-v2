@@ -26,11 +26,8 @@ export async function POST() {
         description: 'Kelas persiapan PTE Academic',
         defaultQuota: 15,
         totalSessions: 20,
-        room: 'Ruang PTE',
-        geoRadiusM: 150,
         graceMinutesBefore: 10,
         graceMinutesAfter: 20,
-        requiredFactors: 'qr,pin',
       },
     })
 

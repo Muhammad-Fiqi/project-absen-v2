@@ -1,6 +1,6 @@
 'use client'
 
-import { GraduationCap, ShieldCheck, QrCode, MapPin, Camera, Fingerprint, Clock, BarChart3, ArrowRight } from 'lucide-react'
+import { GraduationCap, ShieldCheck, QrCode, Clock, BarChart3, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,9 +12,6 @@ interface LandingProps {
 
 const features = [
   { icon: QrCode, title: 'QR Dinamis', desc: 'QR berputar setiap 20 detik, anti-foto screenshot' },
-  { icon: MapPin, title: 'Geo-fencing', desc: 'Wajib berada di radius lokasi kelas' },
-  { icon: Fingerprint, title: 'Sidik Perangkat', desc: 'Satu perangkat tidak bisa absen dua siswa' },
-  { icon: Camera, title: 'Verifikasi Selfie AI', desc: 'AI mendeteksi selfie asli vs foto dokumen' },
   { icon: Clock, title: 'Jendela Waktu', desc: 'Absensi hanya dibuka saat sesi berlangsung' },
   { icon: BarChart3, title: 'Laporan Real-time', desc: 'Pantau 20 pertemuan & tingkat kehadiran' },
 ]
@@ -46,7 +43,7 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
             <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
               Aplikasi absensi untuk kursus PTE yang adil, transparan, dan sulit dimanipulasi.
               Banyak sesi per hari (offline & online) dengan materi sama — siswa bebas pilih sesi.
-              Kuota personal 10–20 sesi, verifikasi multi-faktor: QR dinamis, PIN, geo-lokasi & wajah AI.
+              Kuota personal 10–20 sesi, verifikasi QR dinamis & jendela waktu.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button
@@ -80,7 +77,7 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
       <section className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
         <div className="mb-10 text-center">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            6 Lapis Perlindungan Anti-Curang
+            3 Fitur Utama
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
             Kombinasi inovatif memastikan kehadiran siswa benar-benar valid dan adil.
@@ -113,7 +110,7 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {[
               { step: '01', title: 'Pengajar Buka Sesi', desc: 'Pengajar membuat/membuka sesi pertemuan dan menampilkan QR dinamis di layar kelas.' },
-              { step: '02', title: 'Siswa Absen Multi-Faktor', desc: 'Siswa scan QR + masukkan PIN sesi + aktifkan lokasi (+ selfie opsional). Sistem memverifikasi semua.' },
+              { step: '02', title: 'Siswa Scan QR', desc: 'Siswa scan QR dinamis yang ditampilkan pengajar. Sistem memverifikasi keaslian QR & jendela waktu.' },
               { step: '03', title: 'Laporan Otomatis', desc: 'Hitung kehadiran otomatis sampai 20 pertemuan. Lihat statistik per siswa & per sesi real-time.' },
             ].map((s) => (
               <div

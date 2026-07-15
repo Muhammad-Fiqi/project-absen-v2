@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentTeacher } from '@/lib/auth'
-import { generateQrSecret, generateSessionPin } from '@/lib/security'
+import { generateQrSecret } from '@/lib/security'
 
 export const runtime = 'nodejs'
 
@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
     const {
       courseId, title, date, startTime, endTime,
       mode, platform, room, teacher: teacherName, topicOfDay, notes,
+      maxAttendees,
     } = body
     if (!courseId || !date || !startTime || !endTime || !mode) {
       return NextResponse.json({ error: 'Field wajib tidak lengkap (courseId, date, startTime, endTime, mode)' }, { status: 400 })
@@ -81,14 +82,11 @@ export async function POST(req: NextRequest) {
         endTime: end,
         mode,
         platform: platform || (isOffline ? 'Office' : 'Google Meet'),
-        room: room || (isOffline ? course.room : null),
+        room: room || null,
         teacher: teacherName || null,
         topicOfDay: topicOfDay || null,
-        locationLat: isOffline ? course.locationLat : null,
-        locationLng: isOffline ? course.locationLng : null,
-        geoRadiusM: isOffline ? course.geoRadiusM : null,
+        maxAttendees: maxAttendees ?? 10,
         status: 'scheduled',
-        sessionPin: generateSessionPin(),
         qrSecret: generateQrSecret(),
         notes,
         createdById: teacher.id,

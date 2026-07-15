@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
 } from 'recharts'
-import { Loader2, TrendingUp, Users, Calendar, AlertTriangle, Download, Award, PackageOpen, Zap, Gift } from 'lucide-react'
+import { Loader2, TrendingUp, Users, Calendar, Download, Award, PackageOpen, Zap, Gift } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,11 +14,11 @@ import { apiGet } from '@/lib/api-client'
 
 interface ReportData {
   course: { id: string; code: string; name: string; totalSessions: number; totalStudents: number; defaultQuota: number }
-  overall: { totalPresent: number; totalLate: number; totalFlagged: number; totalCheckIns: number; totalQuota: number; quotaUsagePct: number; studentsExhausted: number; studentsExpiring: number; uniqueDaysWithSessions: number }
+  overall: { totalPresent: number; totalLate: number; totalCheckIns: number; totalQuota: number; quotaUsagePct: number; studentsExhausted: number; studentsExpiring: number; uniqueDaysWithSessions: number }
   perStudent: Array<{
     studentId: string; studentCode: string; name: string; email: string | null; phone: string | null
     sessionQuota: number; sessionsUsed: number; sessionsRemaining: number; quotaExhausted: boolean
-    present: number; late: number; flagged: number; uniqueDaysAttended: number; quotaUsagePct: number; quotaExtendedAt: string | null
+    present: number; late: number; uniqueDaysAttended: number; quotaUsagePct: number; quotaExtendedAt: string | null
   }>
   perDay: Array<{
     dayKey: string; date: string; topicOfDay: string | null; sessionCount: number; offlineCount: number; onlineCount: number; totalCheckIns: number; present: number; late: number
@@ -54,8 +54,8 @@ export function ReportsView() {
 
   function exportCsv() {
     const rows = [
-      ['Kode', 'Nama', 'Kuota', 'Terpakai', 'Sisa', 'Hadir', 'Terlambat', 'Hari Hadir', 'Ditandai', 'Usage %', 'Diperpanjang'],
-      ...data.perStudent.map((s) => [s.studentCode, s.name, s.sessionQuota, s.sessionsUsed, s.sessionsRemaining, s.present, s.late, s.uniqueDaysAttended, s.flagged, s.quotaUsagePct, s.quotaExtendedAt || '']),
+      ['Kode', 'Nama', 'Kuota', 'Terpakai', 'Sisa', 'Hadir', 'Terlambat', 'Hari Hadir', 'Usage %', 'Diperpanjang'],
+      ...data.perStudent.map((s) => [s.studentCode, s.name, s.sessionQuota, s.sessionsUsed, s.sessionsRemaining, s.present, s.late, s.uniqueDaysAttended, s.quotaUsagePct, s.quotaExtendedAt || '']),
     ]
     const csv = rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })

@@ -1,0 +1,618 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback } from 'react'
+     4→import {
+     5→  Calendar,
+     6→  CheckCircle2,
+     7→  Clock,
+     8→  TrendingUp,
+     9→  Target,
+    10→  QrCode,
+    11→  MapPin,
+    12→  KeyRound,
+    13→  Camera,
+    14→  Loader2,
+    15→  RefreshCw,
+    16→  GraduationCap,
+    17→  AlertCircle,
+    18→  Zap,
+    19→  Video,
+    20→  Building2,
+    21→  Sparkles,
+    22→  CalendarDays,
+    23→  AlertTriangle,
+    24→  PackageOpen,
+    25→  History,
+    26→  X,
+    27→  Gift,
+    28→  Send,
+    29→  ShieldCheck,
+    30→} from 'lucide-react'
+    31→import { Button } from '@/components/ui/button'
+    32→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    33→import { Badge } from '@/components/ui/badge'
+    34→import { Progress } from '@/components/ui/progress'
+    35→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    36→import { apiGet } from '@/lib/api-client'
+    37→import { AttendanceFlow } from './attendance-flow'
+    38→import { RequestExtension } from './request-extension'
+    39→import { AttendanceCalendar } from './attendance-calendar'
+    40→import { toast } from 'sonner'
+    41→import type { StudentDashboard as StudentDashboardData, DayGroup } from '@/lib/types'
+    42→
+    43→interface ExtensionRequestRow {
+    44→  id: string
+    45→  requestedSessions: number
+    46→  reason: string
+    47→  status: 'pending' | 'approved' | 'denied'
+    48→  reviewedAt: string | null
+    49→  reviewNote: string | null
+    50→  createdAt: string
+    51→}
+    52→
+    53→interface StudentDashboardProps {
+    54→  initialData: StudentDashboardData
+    55→}
+    56→
+    57→export function StudentDashboard({ initialData }: StudentDashboardProps) {
+    58→  const [data, setData] = useState(initialData)
+    59→  const [refreshing, setRefreshing] = useState(false)
+    60→  const [flowSession, setFlowSession] = useState<{ id: string; sessionNumber: number; title: string; date: string; startTime: string; endTime: string; room: string | null; notes: string | null } | null>(null)
+    61→  const [extOpen, setExtOpen] = useState(false)
+    62→  const [extRequests, setExtRequests] = useState<ExtensionRequestRow[]>([])
+    63→  const [extLoading, setExtLoading] = useState(false)
+    64→
+    65→  const loadExtRequests = useCallback(async () => {
+    66→    setExtLoading(true)
+    67→    try {
+    68→      const res = await apiGet<{ requests: ExtensionRequestRow[] }>('/api/extension-requests')
+    69→      setExtRequests(res.requests)
+    70→    } catch {
+    71→      // Silent fail
+    72→    } finally {
+    73→      setExtLoading(false)
+    74→    }
+    75→  }, [])
+    76→
+    77→  useEffect(() => {
+    78→    loadExtRequests()
+    79→  }, [loadExtRequests])
+    80→
+    81→  async function refresh() {
+    82→    setRefreshing(true)
+    83→    try {
+    84→      const fresh = await apiGet<StudentDashboardData>('/api/student/dashboard')
+    85→      setData(fresh)
+    86→    } catch {
+    87→      toast.error('Gagal memuat ulang data')
+    88→    } finally {
+    89→      setRefreshing(false)
+    90→    }
+    91→  }
+    92→
+    93→  const { student, course, quota, stats, today, upcomingDays, recentDays } = data
+    94→  const quotaPct = quota.total > 0 ? Math.round((quota.used / quota.total) * 100) : 0
+    95→
+    96→  const factorIcons: Record<string, typeof QrCode> = { qr: QrCode, pin: KeyRound, geo: MapPin, selfie: Camera }
+    97→
+    98→  return (
+    99→    <div className="animate-fade-in mx-auto max-w-6xl px-4 py-6">
+   100→      {/* Welcome */}
+   101→      <div className="mb-6 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 sm:p-6">
+   102→        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   103→          <div className="flex items-center gap-3">
+   104→            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+   105→              <GraduationCap className="h-6 w-6" />
+   106→            </div>
+   107→            <div>
+   108→              <h1 className="text-xl font-bold sm:text-2xl">Halo, {student.name.split(' ')[0]}! 👋</h1>
+   109→              <p className="text-sm text-muted-foreground">
+   110→                {course.name} · {student.studentCode}
+   111→              </p>
+   112→            </div>
+   113→          </div>
+   114→          <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing} className="gap-1.5">
+   115→            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+   116→            Refresh
+   117→          </Button>
+   118→        </div>
+   119→      </div>
+   120→
+   121→      {/* QUOTA BANNER — most important */}
+   122→      {quota.exhausted ? (
+   123→        <Card className="mb-6 border-destructive/40 bg-destructive/5 transition-transform hover:-translate-y-0.5">
+   124→          <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center">
+   125→            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-destructive/15 text-destructive">
+   126→              <PackageOpen className="h-6 w-6" />
+   127→            </div>
+   128→            <div className="flex-1">
+   129→              <h3 className="font-semibold text-destructive">Kuota sesi Anda habis!</h3>
+   130→              <p className="text-sm text-muted-foreground">
+   131→                Anda telah menggunakan {quota.used} dari {quota.total} sesi. Minta perpanjangan ke pengajar agar bisa ikut kelas lagi.
+   132→              </p>
+   133→            </div>
+   134→            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+   135→              <Badge variant="destructive" className="justify-center">{quota.used}/{quota.total} habis</Badge>
+   136→              <Button
+   137→                size="sm"
+   138→                onClick={() => setExtOpen(true)}
+   139→                className="gap-1.5 bg-gradient-to-r from-primary to-emerald-600 hover:opacity-90"
+   140→              >
+   141→                <Send className="h-3.5 w-3.5" /> Minta Perpanjangan
+   142→              </Button>
+   143→            </div>
+   144→          </CardContent>
+   145→        </Card>
+   146→      ) : quota.expiringSoon ? (
+   147→        <Card className="mb-6 border-amber-400/50 bg-amber-50 transition-transform hover:-translate-y-0.5 dark:bg-amber-950/20">
+   148→          <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center">
+   149→            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+   150→              <Zap className="h-6 w-6" />
+   151→            </div>
+   152→            <div className="flex-1">
+   153→              <h3 className="font-semibold text-amber-800 dark:text-amber-200">Kuota segera habis!</h3>
+   154→              <p className="text-sm text-muted-foreground">
+   155→                Sisa kuota Anda hanya <strong>{quota.remaining} sesi</strong> dari {quota.total}. Pertimbangkan untuk perpanjang ke pengajar.
+   156→              </p>
+   157→            </div>
+   158→            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+   159→              <Badge className="justify-center gap-1 bg-amber-500 text-white hover:bg-amber-500">
+   160→                <Zap className="h-3 w-3" /> {quota.remaining} tersisa
+   161→              </Badge>
+   162→              <Button
+   163→                size="sm"
+   164→                variant="outline"
+   165→                onClick={() => setExtOpen(true)}
+   166→                className="gap-1.5 border-amber-400 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-950/40"
+   167→              >
+   168→                <Send className="h-3.5 w-3.5" /> Minta Perpanjangan
+   169→              </Button>
+   170→            </div>
+   171→          </CardContent>
+   172→        </Card>
+   173→      ) : null}
+   174→
+   175→      {/* Stats grid */}
+   176→      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+   177→        <StatCard
+   178→          icon={PackageOpen}
+   179→          label="Sisa Kuota"
+   180→          value={quota.remaining}
+   181→          sub={`dari ${quota.total} sesi`}
+   182→          tone={quota.exhausted ? 'destructive' : quota.expiringSoon ? 'amber' : 'primary'}
+   183→        />
+   184→        <StatCard
+   185→          icon={CheckCircle2}
+   186→          label="Hadir"
+   187→          value={stats.present}
+   188→          sub={`${stats.late} terlambat`}
+   189→          tone="primary"
+   190→        />
+   191→        <StatCard
+   192→          icon={CalendarDays}
+   193→          label="Hari Hadir"
+   194→          value={stats.uniqueDaysAttended}
+   195→          sub="hari berbeda"
+   196→          tone="default"
+   197→        />
+   198→        <StatCard
+   199→          icon={TrendingUp}
+   200→          label="Total Absensi"
+   201→          value={stats.totalCheckIns}
+   202→          sub={`dari ${quota.total} kuota`}
+   203→          tone="default"
+   204→        />
+   205→        {stats.excused > 0 && (
+   206→          <StatCard
+   207→            icon={ShieldCheck}
+   208→            label="Izin"
+   209→            value={stats.excused}
+   210→            sub="tidak mengurangi kuota"
+   211→            tone="purple"
+   212→          />
+   213→        )}
+   214→      </div>
+   215→
+   216→      {/* Quota progress */}
+   217→      <Card className="mb-6 border-border/60">
+   218→        <CardHeader className="pb-3">
+   219→          <div className="flex items-center justify-between">
+   220→            <CardTitle className="flex items-center gap-2 text-base">
+   221→              <Target className="h-4 w-4 text-primary" />
+   222→              Kuota Sesi Personal
+   223→            </CardTitle>
+   224→            <Badge variant={quota.exhausted ? 'destructive' : 'secondary'} className="gap-1">
+   225→              {quota.used} / {quota.total} terpakai
+   226→            </Badge>
+   227→          </div>
+   228→        </CardHeader>
+   229→        <CardContent className="space-y-3">
+   230→          <div className="flex items-center justify-between text-sm">
+   231→            <span className="text-muted-foreground">Pemakaian kuota</span>
+   232→            <span className="font-semibold">{quotaPct}%</span>
+   233→          </div>
+   234→          <Progress value={quotaPct} className={`h-2.5 ${quota.exhausted ? '[&>div]:bg-destructive' : quota.expiringSoon ? '[&>div]:bg-amber-500' : ''}`} />
+   235→          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+   236→            <div className="flex flex-wrap gap-1.5">
+   237→              {course.requiredFactors.map((f) => {
+   238→                const Icon = factorIcons[f] || KeyRound
+   239→                const labels: Record<string, string> = { qr: 'QR', pin: 'PIN', geo: 'Geo (offline)', selfie: 'Selfie AI' }
+   240→                return (
+   241→                  <Badge key={f} variant="outline" className="gap-1 text-[10px]">
+   242→                    <Icon className="h-3 w-3" />
+   243→                    {labels[f] || f}
+   244→                  </Badge>
+   245→                )
+   246→              })}
+   247→            </div>
+   248→            {quota.extendedAt && (
+   249→              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+   250→                <History className="h-3 w-3" />
+   251→                Terakhir diperpanjang: {new Date(quota.extendedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+   252→              </span>
+   253→            )}
+   254→          </div>
+   255→          <p className="rounded-lg bg-muted/40 p-2 text-[11px] text-muted-foreground">
+   256→            <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
+   257→            Setiap hari ada beberapa sesi (offline & online) dengan materi yang sama. Anda cukup ikut <strong>1 sesi per hari</strong> — bebas pilih sesi mana saja.
+   258→          </p>
+   259→        </CardContent>
+   260→      </Card>
+   261→
+   262→      {/* Calendar heatmap */}
+   263→      <div className="mb-6">
+   264→        <AttendanceCalendar />
+   265→      </div>
+   266→
+   267→      {/* TODAY — most prominent */}
+   268→      {today && (
+   269→        <div className="relative mb-6">
+   270→          {/* Gradient border wrapper for emphasis */}
+   271→          <div className="rounded-2xl bg-gradient-to-r from-primary via-emerald-500 to-primary p-px shadow-md">
+   272→            <DayGroupCard
+   273→              day={today}
+   274→              isToday
+   275→              quotaExhausted={quota.exhausted}
+   276→              onCheckIn={(s) => setFlowSession({
+   277→                id: s.id,
+   278→                sessionNumber: s.sessionNumber,
+   279→                title: s.title,
+   280→                date: today.date,
+   281→                startTime: s.startTime,
+   282→                endTime: s.endTime,
+   283→                room: s.room,
+   284→                notes: null,
+   285→              })}
+   286→            />
+   287→          </div>
+   288→        </div>
+   289→      )}
+   290→
+   291→      {/* Upcoming + Recent tabs */}
+   292→      <Tabs defaultValue="upcoming" className="mt-6 w-full">
+   293→        <div className="mb-4 flex items-center justify-between">
+   294→          <h2 className="text-lg font-semibold">Jadwal Lainnya</h2>
+   295→          <TabsList>
+   296→            <TabsTrigger value="upcoming" className="gap-1">
+   297→              <Calendar className="h-3.5 w-3.5" /> Mendatang ({upcomingDays.length})
+   298→            </TabsTrigger>
+   299→            <TabsTrigger value="history" className="gap-1">
+   300→              <History className="h-3.5 w-3.5" /> Riwayat ({recentDays.length})
+   301→            </TabsTrigger>
+   302→          </TabsList>
+   303→        </div>
+   304→        <TabsContent value="upcoming" className="mt-0 space-y-3">
+   305→          {upcomingDays.length === 0 ? (
+   306→            <EmptyState icon={Calendar} text="Tidak ada jadwal mendatang" />
+   307→          ) : (
+   308→            upcomingDays.slice(0, 10).map((d) => (
+   309→              <DayGroupCard key={d.dayKey} day={d} quotaExhausted={quota.exhausted} onCheckIn={(s) => setFlowSession({
+   310→                id: s.id, sessionNumber: s.sessionNumber, title: s.title, date: d.date, startTime: s.startTime, endTime: s.endTime, room: s.room, notes: null,
+   311→              })} />
+   312→            ))
+   313→          )}
+   314→        </TabsContent>
+   315→        <TabsContent value="history" className="mt-0 space-y-3">
+   316→          {recentDays.length === 0 ? (
+   317→            <EmptyState icon={History} text="Belum ada riwayat kehadiran" />
+   318→          ) : (
+   319→            recentDays.map((d) => (
+   320→              <DayGroupCard key={d.dayKey} day={d} isHistory quotaExhausted={quota.exhausted} onCheckIn={() => {}} />
+   321→            ))
+   322→          )}
+   323→        </TabsContent>
+   324→      </Tabs>
+   325→
+   326→      {flowSession && (
+   327→        <AttendanceFlow
+   328→          open={!!flowSession}
+   329→          onClose={() => setFlowSession(null)}
+   330→          session={flowSession}
+   331→          requiredFactors={course.requiredFactors}
+   332→          studentId={student.id}
+   333→          onSuccess={() => {
+   334→            setFlowSession(null)
+   335→            refresh()
+   336→          }}
+   337→        />
+   338→      )}
+   339→
+   340→      <RequestExtension
+   341→        open={extOpen}
+   342→        onOpenChange={setExtOpen}
+   343→        quota={{ used: quota.used, total: quota.total, remaining: quota.remaining, exhausted: quota.exhausted }}
+   344→        onSubmitted={() => {
+   345→          loadExtRequests()
+   346→          refresh()
+   347→        }}
+   348→      />
+   349→
+   350→      {/* Extension requests history (bottom section) */}
+   351→      <ExtensionRequestsSection
+   352→        requests={extRequests}
+   353→        loading={extLoading}
+   354→        onReload={loadExtRequests}
+   355→        onRequestNew={() => setExtOpen(true)}
+   356→      />
+   357→    </div>
+   358→  )
+   359→}
+   360→
+   361→function StatCard({
+   362→  icon: Icon,
+   363→  label,
+   364→  value,
+   365→  sub,
+   366→  tone,
+   367→}: {
+   368→  icon: typeof CheckCircle2
+   369→  label: string
+   370→  value: string | number
+   371→  sub: string
+   372→  tone: 'primary' | 'amber' | 'destructive' | 'default' | 'purple'
+   373→}) {
+   374→  const toneClasses = {
+   375→    primary: 'bg-primary/10 text-primary',
+   376→    amber: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+   377→    destructive: 'bg-destructive/10 text-destructive',
+   378→    default: 'bg-muted text-muted-foreground',
+   379→    purple: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300',
+   380→  }[tone]
+   381→  return (
+   382→    <Card className="border-border/60 transition-transform hover:-translate-y-0.5 hover:shadow-md">
+   383→      <CardContent className="p-4">
+   384→        <div className="mb-2 flex items-center justify-between">
+   385→          <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${toneClasses}`}>
+   386→            <Icon className="h-4 w-4" />
+   387→          </div>
+   388→        </div>
+   389→        <div className="text-2xl font-bold tracking-tight">{value}</div>
+   390→        <div className="text-xs font-medium text-muted-foreground">{label}</div>
+   391→        <div className="mt-0.5 text-[11px] text-muted-foreground/80">{sub}</div>
+   392→      </CardContent>
+   393→    </Card>
+   394→  )
+   395→}
+   396→
+   397→function EmptyState({ icon: Icon, text }: { icon: typeof Calendar; text: string }) {
+   398→  return (
+   399→    <div className="rounded-xl border border-dashed border-border/60 py-12 text-center text-sm text-muted-foreground">
+   400→      <Icon className="mx-auto mb-2 h-8 w-8 opacity-40" />
+   401→      {text}
+   402→    </div>
+   403→  )
+   404→}
+   405→
+   406→function DayGroupCard({
+   407→  day,
+   408→  isToday = false,
+   409→  isHistory = false,
+   410→  quotaExhausted,
+   411→  onCheckIn,
+   412→}: {
+   413→  day: DayGroup
+   414→  isToday?: boolean
+   415→  isHistory?: boolean
+   416→  quotaExhausted: boolean
+   417→  onCheckIn: (s: DayGroup['sessions'][number]) => void
+   418→}) {
+   419→  const dateLabel = new Date(day.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+   420→  const attendedSession = day.sessions.find((s) => s.id === day.attendedSessionId)
+   421→
+   422→  return (
+   423→    <Card className={`border-border/60 overflow-hidden rounded-2xl transition-transform hover:-translate-y-0.5 ${isToday ? 'border-transparent ring-0' : 'shadow-sm'}`}>
+   424→      <CardHeader className="pb-3">
+   425→        <div className="flex items-start justify-between gap-3">
+   426→          <div>
+   427→            <div className="flex items-center gap-2">
+   428→              {isToday && (
+   429→                <Badge className="gap-1 bg-primary text-primary-foreground hover:bg-primary">
+   430→                  <Zap className="h-3 w-3" /> HARI INI
+   431→                </Badge>
+   432→              )}
+   433→              <CardTitle className="text-base">{dateLabel}</CardTitle>
+   434→            </div>
+   435→            {day.topicOfDay && (
+   436→              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+   437→                <Sparkles className="h-3.5 w-3.5 text-primary" />
+   438→                Materi hari ini: <strong className="text-foreground">{day.topicOfDay}</strong>
+   439→              </p>
+   440→            )}
+   441→          </div>
+   442→          {attendedSession && (
+   443→            <Badge variant="default" className="shrink-0 gap-1">
+   444→              <CheckCircle2 className="h-3 w-3" /> Sudah absen
+   445→            </Badge>
+   446→          )}
+   447→          {isHistory && !attendedSession && (
+   448→            <Badge variant="outline" className="shrink-0 gap-1 text-muted-foreground">
+   449→              <X className="h-3 w-3" /> Tidak hadir
+   450→            </Badge>
+   451→          )}
+   452→        </div>
+   453→      </CardHeader>
+   454→      <CardContent className="space-y-2">
+   455→        {/* If already attended today, show which session */}
+   456→        {attendedSession && (
+   457→          <div className="mb-2 flex items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-xs">
+   458→            <CheckCircle2 className="h-4 w-4 text-primary" />
+   459→            <span className="text-muted-foreground">
+   460→              Anda absen di <strong>{attendedSession.title}</strong> ·{' '}
+   461→              {new Date(attendedSession.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} ·{' '}
+   462→              {attendedSession.mode === 'online' ? attendedSession.platform : 'Offline'} · {attendedSession.teacher}
+   463→            </span>
+   464→          </div>
+   465→        )}
+   466→        {/* Sessions grid */}
+   467→        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+   468→          {day.sessions.map((s) => {
+   469→            const ModeIcon = s.mode === 'online' ? Video : Building2
+   470→            const fmtTime = (d: string) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+   471→            const canCheckIn = s.canCheckIn && !attendedSession && !isHistory && !quotaExhausted
+   472→            return (
+   473→              <div
+   474→                key={s.id}
+   475→                className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+   476→                  canCheckIn ? 'border-primary/40 bg-primary/5 hover:bg-primary/10' : 'border-border/60 bg-card'
+   477→                }`}
+   478→              >
+   479→                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+   480→                  s.mode === 'online' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' : 'bg-accent text-accent-foreground'
+   481→                }`}>
+   482→                  <ModeIcon className="h-4 w-4" />
+   483→                </div>
+   484→                <div className="min-w-0 flex-1">
+   485→                  <div className="flex items-center gap-1.5">
+   486→                    <span className="text-sm font-medium">{s.title}</span>
+   487→                  </div>
+   488→                  <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+   489→                    <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" /> {fmtTime(s.startTime)}–{fmtTime(s.endTime)}</span>
+   490→                    {s.teacher && <span>· {s.teacher}</span>}
+   491→                    {s.platform && <span>· {s.platform}</span>}
+   492→                  </div>
+   493→                  {!canCheckIn && !attendedSession && !isHistory && s.checkInWindow.message && (
+   494→                    <p className="mt-0.5 text-[10px] text-muted-foreground/70">{s.checkInWindow.message}</p>
+   495→                  )}
+   496→                </div>
+   497→                {canCheckIn ? (
+   498→                  <Button size="sm" onClick={() => onCheckIn(s)} className="shrink-0 gap-1">
+   499→                    <QrCode className="h-3.5 w-3.5" /> Absen
+   500→                  </Button>
+   501→                ) : attendedSession?.id === s.id ? (
+   502→                  <Badge variant="default" className="shrink-0 gap-1">
+   503→                    <CheckCircle2 className="h-3 w-3" /> Hadir
+   504→                  </Badge>
+   505→                ) : attendedSession ? (
+   506→                  <span className="shrink-0 text-[10px] text-muted-foreground/60">—</span>
+   507→                ) : isHistory ? (
+   508→                  <span className="shrink-0 text-[10px] text-muted-foreground/60">lewat</span>
+   509→                ) : quotaExhausted ? (
+   510→                  <span className="shrink-0 text-[10px] text-destructive">kuota habis</span>
+   511→                ) : (
+   512→                  <span className="shrink-0 text-[10px] text-muted-foreground/60">{s.checkInWindow.message}</span>
+   513→                )}
+   514→              </div>
+   515→            )
+   516→          })}
+   517→        </div>
+   518→      </CardContent>
+   519→    </Card>
+   520→  )
+   521→}
+   522→
+   523→function ExtensionRequestsSection({
+   524→  requests,
+   525→  loading,
+   526→  onReload,
+   527→  onRequestNew,
+   528→}: {
+   529→  requests: ExtensionRequestRow[]
+   530→  loading: boolean
+   531→  onReload: () => void
+   532→  onRequestNew: () => void
+   533→}) {
+   534→  const pending = requests.filter((r) => r.status === 'pending').length
+   535→  const approved = requests.filter((r) => r.status === 'approved').length
+   536→  const denied = requests.filter((r) => r.status === 'denied').length
+   537→
+   538→  const statusMeta: Record<ExtensionRequestRow['status'], { label: string; cls: string; icon: typeof Clock }> = {
+   539→    pending: { label: 'Menunggu', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300/40', icon: Clock },
+   540→    approved: { label: 'Disetujui', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300/40', icon: CheckCircle2 },
+   541→    denied: { label: 'Ditolak', cls: 'bg-destructive/10 text-destructive border-destructive/30', icon: X },
+   542→  }
+   543→
+   544→  return (
+   545→    <Card className="mt-6 border-border/60 transition-transform hover:-translate-y-0.5">
+   546→      <CardHeader className="pb-3">
+   547→        <div className="flex items-center justify-between gap-2">
+   548→          <CardTitle className="flex items-center gap-2 text-base">
+   549→            <Gift className="h-4 w-4 text-primary" />
+   550→            Permintaan Perpanjangan
+   551→          </CardTitle>
+   552→          <Button size="sm" variant="outline" onClick={onRequestNew} className="gap-1.5">
+   553→            <Send className="h-3.5 w-3.5" /> Buat Permintaan
+   554→          </Button>
+   555→        </div>
+   556→        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+   557→          <Badge variant="outline" className="gap-1 border-amber-300/40 bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+   558→            <Clock className="h-3 w-3" /> {pending} menunggu
+   559→          </Badge>
+   560→          <Badge variant="outline" className="gap-1 border-emerald-300/40 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+   561→            <CheckCircle2 className="h-3 w-3" /> {approved} disetujui
+   562→          </Badge>
+   563→          <Badge variant="outline" className="gap-1 border-destructive/30 bg-destructive/10 text-destructive">
+   564→            <X className="h-3 w-3" /> {denied} ditolak
+   565→          </Badge>
+   566→          <Button size="sm" variant="ghost" onClick={onReload} disabled={loading} className="h-6 gap-1 px-2 text-[10px]">
+   567→            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
+   568→          </Button>
+   569→        </div>
+   570→      </CardHeader>
+   571→      <CardContent>
+   572→        {loading ? (
+   573→          <div className="space-y-2">
+   574→            {[1, 2].map((i) => (
+   575→              <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
+   576→            ))}
+   577→          </div>
+   578→        ) : requests.length === 0 ? (
+   579→          <div className="rounded-xl border border-dashed border-border/60 py-8 text-center">
+   580→            <Gift className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+   581→            <p className="text-sm text-muted-foreground">Belum ada permintaan perpanjangan.</p>
+   582→            <p className="mt-1 text-xs text-muted-foreground/80">Klik &quot;Buat Permintaan&quot; untuk mengajukan tambahan sesi ke pengajar.</p>
+   583→          </div>
+   584→        ) : (
+   585→          <div className="max-h-72 space-y-2 overflow-y-auto scrollbar-thin">
+   586→            {requests.map((r) => {
+   587→              const meta = statusMeta[r.status]
+   588→              return (
+   589→                <div key={r.id} className="rounded-xl border border-border/60 p-3 transition-colors hover:bg-muted/30">
+   590→                  <div className="flex items-start justify-between gap-2">
+   591→                    <div className="min-w-0 flex-1">
+   592→                      <div className="flex flex-wrap items-center gap-2">
+   593→                        <Badge variant="outline" className={`gap-1 text-[10px] ${meta.cls}`}>
+   594→                          <meta.icon className="h-3 w-3" /> {meta.label}
+   595→                        </Badge>
+   596→                        <span className="text-sm font-semibold text-primary">+{r.requestedSessions} sesi</span>
+   597→                        <span className="text-[10px] text-muted-foreground">
+   598→                          {new Date(r.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+   599→                        </span>
+   600→                      </div>
+   601→                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{r.reason}</p>
+   602→                      {r.reviewNote && (
+   603→                        <p className="mt-1 rounded bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">
+   604→                          <strong>Catatan pengajar:</strong> {r.reviewNote}
+   605→                        </p>
+   606→                      )}
+   607→                    </div>
+   608→                  </div>
+   609→                </div>
+   610→              )
+   611→            })}
+   612→          </div>
+   613→        )}
+   614→      </CardContent>
+   615→    </Card>
+   616→  )
+   617→}
+   618→

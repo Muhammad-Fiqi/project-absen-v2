@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentTeacher } from '@/lib/auth'
-import { generateQrSecret, generateSessionPin } from '@/lib/security'
+import { generateQrSecret } from '@/lib/security'
 
 export const runtime = 'nodejs'
 
@@ -13,6 +13,7 @@ interface BulkSessionItem {
   room?: string
   teacher?: string
   notes?: string
+  maxAttendees?: number
 }
 
 // POST /api/sessions/bulk — create multiple sessions in one call
@@ -24,11 +25,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { courseId, date, topicOfDay, sessions } = body as {
+    const { courseId, date, topicOfDay, sessions, maxAttendees: globalMaxAttendees } = body as {
       courseId: string
       date: string          // "YYYY-MM-DD"
       topicOfDay?: string
       sessions: BulkSessionItem[]
+      maxAttendees?: number
     }
 
     if (!courseId || !date || !sessions || !Array.isArray(sessions) || sessions.length === 0) {
@@ -93,7 +95,6 @@ export async function POST(req: NextRequest) {
       const isOffline = s.mode === 'offline'
       const modeLabel = isOffline ? 'Offline' : 'Online'
       const platform = s.platform || (isOffline ? 'Office' : 'Google Meet')
-      const room = s.room || (isOffline ? course.room : null)
 
       const session = await db.session.create({
         data: {
@@ -105,14 +106,11 @@ export async function POST(req: NextRequest) {
           endTime: endDateTime,
           mode: s.mode,
           platform,
-          room,
+          room: s.room || null,
           teacher: s.teacher || null,
           topicOfDay: topicOfDay || null,
-          locationLat: isOffline ? course.locationLat : null,
-          locationLng: isOffline ? course.locationLng : null,
-          geoRadiusM: isOffline ? course.geoRadiusM : null,
+          maxAttendees: s.maxAttendees ?? globalMaxAttendees ?? 10,
           status: 'scheduled',
-          sessionPin: generateSessionPin(),
           qrSecret: generateQrSecret(),
           notes: s.notes || null,
           createdById: teacher.id,

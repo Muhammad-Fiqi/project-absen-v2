@@ -69,6 +69,20 @@ export async function GET() {
     }
   }
 
+  // Count attendees per session
+  const sessionIds = sessions.map((s) => s.id)
+  const attendeeCounts = new Map<string, number>()
+  if (sessionIds.length > 0) {
+    const countResults = await db.attendance.groupBy({
+      by: ['sessionId'],
+      where: { sessionId: { in: sessionIds }, verified: true },
+      _count: true,
+    })
+    for (const r of countResults) {
+      attendeeCounts.set(r.sessionId, r._count)
+    }
+  }
+
   const now = new Date()
   const todayKey = dayKey(now)
 
@@ -119,6 +133,8 @@ export async function GET() {
           platform: s.platform,
           room: s.room,
           teacher: s.teacher,
+          maxAttendees: s.maxAttendees,
+          attendeeCount: attendeeCounts.get(s.id) ?? 0,
           status: s.status as 'scheduled' | 'active' | 'completed' | 'cancelled',
           canCheckIn,
           checkInWindow: { ...window, open: effectivelyOpen, message: s.status === 'active' && !window.open ? 'Absensi dibuka oleh pengajar' : window.message },
@@ -155,7 +171,6 @@ export async function GET() {
       name: course.name,
       totalSessions: course.totalSessions,
       defaultQuota: course.defaultQuota,
-      requiredFactors: course.requiredFactors.split(',').map((f) => f.trim()).filter(Boolean),
     },
     quota: {
       total: fullStudent.sessionQuota,

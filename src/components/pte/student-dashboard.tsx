@@ -8,19 +8,14 @@ import {
   TrendingUp,
   Target,
   QrCode,
-  MapPin,
-  KeyRound,
-  Camera,
   Loader2,
   RefreshCw,
   GraduationCap,
-  AlertCircle,
   Zap,
   Video,
   Building2,
   Sparkles,
   CalendarDays,
-  AlertTriangle,
   PackageOpen,
   History,
   X,
@@ -92,8 +87,6 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
 
   const { student, course, quota, stats, today, upcomingDays, recentDays } = data
   const quotaPct = quota.total > 0 ? Math.round((quota.used / quota.total) * 100) : 0
-
-  const factorIcons: Record<string, typeof QrCode> = { qr: QrCode, pin: KeyRound, geo: MapPin, selfie: Camera }
 
   return (
     <div className="animate-fade-in mx-auto max-w-6xl px-4 py-6">
@@ -233,18 +226,6 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
           </div>
           <Progress value={quotaPct} className={`h-2.5 ${quota.exhausted ? '[&>div]:bg-destructive' : quota.expiringSoon ? '[&>div]:bg-amber-500' : ''}`} />
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div className="flex flex-wrap gap-1.5">
-              {course.requiredFactors.map((f) => {
-                const Icon = factorIcons[f] || KeyRound
-                const labels: Record<string, string> = { qr: 'QR', pin: 'PIN', geo: 'Geo (offline)', selfie: 'Selfie AI' }
-                return (
-                  <Badge key={f} variant="outline" className="gap-1 text-[10px]">
-                    <Icon className="h-3 w-3" />
-                    {labels[f] || f}
-                  </Badge>
-                )
-              })}
-            </div>
             {quota.extendedAt && (
               <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                 <History className="h-3 w-3" />
@@ -328,7 +309,6 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
           open={!!flowSession}
           onClose={() => setFlowSession(null)}
           session={flowSession}
-          requiredFactors={course.requiredFactors}
           studentId={student.id}
           onSuccess={() => {
             setFlowSession(null)

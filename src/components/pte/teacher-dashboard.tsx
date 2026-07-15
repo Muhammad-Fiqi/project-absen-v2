@@ -35,10 +35,7 @@ interface SessionItem {
   room: string | null
   teacher: string | null
   topicOfDay: string | null
-  room_: string | null
-  locationLat: number | null
-  locationLng: number | null
-  geoRadiusM: number | null
+  maxAttendees: number
   status: string
   notes: string | null
   course: { code: string; name: string; totalSessions: number }
@@ -248,6 +245,11 @@ function SessionInfoBar({ session }: { session: SessionItem }) {
           {session.room && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {session.room}</span>}
           {session.topicOfDay && <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-primary" /> {session.topicOfDay}</span>}
         </div>
+        <div className="mt-1">
+          <Badge variant="outline" className="gap-1 text-[10px]">
+            <Users className="h-3 w-3" /> Max {session.maxAttendees} orang
+          </Badge>
+        </div>
       </div>
     </div>
   )
@@ -330,7 +332,7 @@ function SessionsByDay({
                       </div>
                       <div className="mt-2 flex items-center justify-between">
                         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Users className="h-3 w-3" /> {s._count?.attendances ?? 0} absen
+                          <Users className="h-3 w-3" /> {s._count?.attendances ?? 0}/{s.maxAttendees}
                         </span>
                         <div onClick={(e) => e.stopPropagation()}>
                           {s.status === 'scheduled' && (
@@ -377,6 +379,7 @@ function CreateSessionDialog({
     teacher: '',
     topicOfDay: '',
     notes: '',
+    maxAttendees: 10,
   })
 
   useEffect(() => {
@@ -414,6 +417,7 @@ function CreateSessionDialog({
         teacher: form.teacher,
         topicOfDay: form.topicOfDay,
         notes: form.notes,
+        maxAttendees: form.maxAttendees,
       })
       toast.success('Sesi berhasil dibuat')
       onOpenChange(false)
@@ -476,6 +480,19 @@ function CreateSessionDialog({
               ))}
             </div>
             <Input value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} placeholder={form.mode === 'online' ? 'Link meeting (opsional)' : 'Nama ruangan (opsional)'} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Maks Peserta (maxAttendees)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={form.maxAttendees}
+                onChange={(e) => setForm({ ...form, maxAttendees: Math.max(1, Math.min(100, Number(e.target.value))) })}
+              />
+              <p className="text-[10px] text-muted-foreground">1–100 peserta per sesi</p>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Materi Hari Ini (topicOfDay) — sama untuk semua sesi hari ini</Label>

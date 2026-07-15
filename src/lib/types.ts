@@ -3,7 +3,6 @@
 export type SessionStatus = 'scheduled' | 'active' | 'completed' | 'cancelled'
 export type SessionMode = 'offline' | 'online'
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'excused'
-export type AttendanceMethod = 'qr' | 'button' | 'multi'
 
 export interface StudentInfo {
   id: string
@@ -40,17 +39,13 @@ export interface SessionInfo {
   room: string | null
   teacher: string | null
   topicOfDay: string | null
-  locationLat: number | null
-  locationLng: number | null
-  geoRadiusM: number | null
+  maxAttendees: number
   status: SessionStatus
-  sessionPin: string | null
   notes: string | null
   course: {
     code: string
     name: string
     totalSessions: number
-    requiredFactors: string
     graceMinutesBefore: number
     graceMinutesAfter: number
   }
@@ -61,29 +56,21 @@ export interface AttendanceInfo {
   sessionId: string
   studentId: string
   status: AttendanceStatus
-  method: AttendanceMethod
   checkInTime: string
-  deviceFingerprint: string | null
-  geoVerified: boolean
-  geoDistanceM: number | null
-  pinVerified: boolean
   qrVerified: boolean
-  selfieVerified: boolean
   verified: boolean
-  factorsPassed: number
-  factorsRequired: number
-  flagged: boolean
+  notes: string | null
   student?: StudentInfo
 }
 
-// A day group: all sessions on a calendar day share topicOfDay
+// A day group: sessions on a calendar day
 export interface DayGroup {
   dayKey: string // YYYY-MM-DD
   date: string // ISO
   topicOfDay: string | null
   isToday: boolean
   isPast: boolean
-  attendedSessionId: string | null // if student already attended a session this day
+  attendedSessionId: string | null
   sessions: Array<{
     id: string
     sessionNumber: number
@@ -94,6 +81,8 @@ export interface DayGroup {
     platform: string | null
     room: string | null
     teacher: string | null
+    maxAttendees: number
+    attendeeCount: number
     status: SessionStatus
     canCheckIn: boolean
     checkInWindow: {
@@ -112,14 +101,13 @@ export interface StudentDashboard {
     name: string
     totalSessions: number
     defaultQuota: number
-    requiredFactors: string[]
   }
   quota: {
     total: number
     used: number
     remaining: number
     exhausted: boolean
-    expiringSoon: boolean // <= 2 remaining
+    expiringSoon: boolean
     extendedAt: string | null
   }
   stats: {
@@ -131,7 +119,7 @@ export interface StudentDashboard {
   }
   today: DayGroup | null
   upcomingDays: DayGroup[]
-  recentDays: DayGroup[] // past days with attendance history
+  recentDays: DayGroup[]
 }
 
 export interface QrPayload {
@@ -145,32 +133,21 @@ export interface QrPayload {
 export interface AttendanceSubmitRequest {
   sessionId: string
   studentId: string
-  method: AttendanceMethod
   qr?: { sessionId: string; token: string; ts?: number; window?: number }
-  pin?: string
-  geo?: { lat: number; lng: number }
-  deviceFingerprint?: string
-  selfieImage?: string // base64
 }
 
 export interface AttendanceSubmitResponse {
   success: boolean
   status: AttendanceStatus
   verified: boolean
-  factorsPassed: number
-  factorsRequired: number
   message: string
   checks: {
     qr?: { passed: boolean; reason?: string }
-    pin?: { passed: boolean; reason?: string }
-    geo?: { passed: boolean; reason?: string; distanceM?: number }
-    device?: { passed: boolean; reason?: string }
-    selfie?: { passed: boolean; reason?: string }
     time?: { passed: boolean; reason?: string }
     quota?: { passed: boolean; reason?: string; remaining?: number }
     daily?: { passed: boolean; reason?: string; attendedSession?: string }
+    capacity?: { passed: boolean; reason?: string }
   }
-  flagged?: boolean
   quotaRemaining?: number
 }
 
@@ -188,7 +165,6 @@ export interface StudentManageRow {
   quotaExtendedAt: string | null
   lastCheckIn: string | null
   uniqueDaysAttended: number
-  flaggedCount: number
   extensions: Array<{
     id: string
     oldQuota: number

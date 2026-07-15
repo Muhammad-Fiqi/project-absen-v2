@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentTeacher } from '@/lib/auth'
-import { buildQrPayload } from '@/lib/security'
+import { buildQrPayload, QR_ROTATION_SECONDS } from '@/lib/security'
 import type { QrPayload } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -9,8 +9,7 @@ export const runtime = 'nodejs'
 // GET /api/sessions/[id]/qr — current rotating QR payload (teacher displays this)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const teacher = await getCurrentTeacher()
-  // Also allow students to fetch (they don't need QR display, but harmless).
-  // Actually only teacher should generate the display QR.
+  // Only teacher should generate the display QR.
   if (!teacher) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -26,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const payload = buildQrPayload(session.id, session.qrSecret, now)
   const qr: QrPayload = payload
   // Also compute next rotation time
-  const nextRotation = (Math.floor(now.getTime() / 1000 / 20) + 1) * 20 * 1000
+  const nextRotation = (Math.floor(now.getTime() / 1000 / QR_ROTATION_SECONDS) + 1) * QR_ROTATION_SECONDS * 1000
   // Real-time attendee count
   const attendeeCount = await db.attendance.count({
     where: { sessionId: session.id, verified: true },
@@ -36,7 +35,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   })
   return NextResponse.json({
     qr,
-    sessionPin: session.sessionPin,
     course: { code: session.course.code, name: session.course.name },
     session: {
       id: session.id,
@@ -47,11 +45,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       platform: session.platform,
       teacher: session.teacher,
       topicOfDay: session.topicOfDay,
+      maxAttendees: session.maxAttendees,
     },
     attendeeCount,
     totalStudents,
     serverTime: now.toISOString(),
     nextRotationAt: new Date(nextRotation).toISOString(),
-    rotationSeconds: 20,
+    rotationSeconds: QR_ROTATION_SECONDS,
   })
 }

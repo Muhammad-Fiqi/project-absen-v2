@@ -1,25 +1,8 @@
-// Crypto & security utilities for anti-fraud attendance
+// Crypto & security utilities for QR-based attendance
 
 import crypto from 'crypto'
 
-// Secret key for HMAC signing (in production, use env var)
 const SECRET_KEY = process.env.ATTENDANCE_SECRET || 'pte-attendance-secret-key-2024-secure'
-
-/**
- * Generate a 6-digit session PIN
- */
-export function generateSessionPin(): string {
-  const buf = crypto.randomBytes(3)
-  const num = buf.readUIntBE(0, 3) % 1000000
-  return num.toString().padStart(6, '0')
-}
-
-/**
- * Generate a random QR token (alphanumeric, URL-safe)
- */
-export function generateQrToken(): string {
-  return crypto.randomBytes(12).toString('base64url')
-}
 
 /**
  * Generate a long-lived QR secret for a session
@@ -30,7 +13,6 @@ export function generateQrSecret(): string {
 
 /**
  * HMAC-sign a payload to prevent QR forgery.
- * Students cannot forge valid tokens without the secret.
  */
 export function signPayload(payload: string): string {
   return crypto.createHmac('sha256', SECRET_KEY).update(payload).digest('hex')
@@ -66,20 +48,15 @@ export function buildQrPayload(sessionId: string, qrSecret: string, now: Date = 
   hmac: string
 } {
   const ts = now.getTime()
-  // Window index: changes every ROTATION_SECONDS
   const window = Math.floor(ts / 1000 / QR_ROTATION_SECONDS)
   const payload = `${sessionId}.${window}`
-  // HMAC uses the session-specific secret so tokens from one session
-  // cannot be reused for another session.
   const hmac = crypto.createHmac('sha256', qrSecret).update(payload).digest('hex')
-  // token = first 16 chars of hmac, easy to scan
   const token = hmac.slice(0, 16)
   return { sessionId, token, ts, window, hmac: token }
 }
 
 /**
  * Verify a scanned QR payload against the session's secret.
- * Validates: sessionId, window (must be current or just-expired), hmac.
  */
 export function verifyQrPayload(
   payload: { sessionId: string; token: string; ts?: number; window?: number },
@@ -91,7 +68,6 @@ export function verifyQrPayload(
   }
   const ts = now.getTime()
   const currentWindow = Math.floor(ts / 1000 / QR_ROTATION_SECONDS)
-  // Allow current window and previous window (in case of scan delay)
   const validWindows = [currentWindow, currentWindow - 1]
   let matched = false
   for (const w of validWindows) {
@@ -131,24 +107,4 @@ export function verifyPin(pin: string, stored: string): boolean {
   } catch {
     return false
   }
-}
-
-/**
- * Haversine distance between two lat/lng points in meters
- */
-export function haversineMeters(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number
-): number {
-  const R = 6371000 // Earth radius in meters
-  const toRad = (d: number) => (d * Math.PI) / 180
-  const dLat = toRad(lat2 - lat1)
-  const dLng = toRad(lng2 - lng1)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return Math.round(R * c)
 }

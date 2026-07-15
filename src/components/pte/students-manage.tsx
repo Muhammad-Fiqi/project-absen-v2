@@ -145,7 +145,7 @@ export function StudentsManage() {
                         <Info label="Sisa Kuota" value={`${s.sessionsRemaining} sesi`} />
                         <Info label="Hadir" value={`${s.sessionsUsed} sesi`} />
                         <Info label="Hari Hadir" value={`${s.uniqueDaysAttended} hari`} />
-                        <Info label="Absensi Ditandai" value={`${s.flaggedCount}`} />
+                        <Info label="Hari Terakhir Absen" value={s.lastCheckIn ? new Date(s.lastCheckIn).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} />
                       </div>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                         {s.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{s.email}</span>}
