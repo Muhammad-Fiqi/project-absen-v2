@@ -39,13 +39,13 @@ export function TeacherLogin({ onBack, onSuccess }: TeacherLoginProps) {
 
   return (
     <div className="animate-fade-in mx-auto flex min-h-[calc(100vh-12rem)] max-w-md items-center px-4 py-10">
-      <Card className="w-full border-border/60 shadow-sm">
+      <Card className="relative w-full border-border/60 shadow-sm">
         <CardHeader className="space-y-2 text-center">
           <button
             onClick={onBack}
-            className="absolute left-4 top-4 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Kembali
+            <ArrowLeft className="h-4 w-4" /> Kembali
           </button>
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
             <ShieldCheck className="h-7 w-7" />
