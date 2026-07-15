@@ -22,6 +22,9 @@ import {
   Gift,
   Send,
   ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,6 +35,7 @@ import { apiGet } from '@/lib/api-client'
 import { AttendanceFlow } from './attendance-flow'
 import { RequestExtension } from './request-extension'
 import { AttendanceCalendar } from './attendance-calendar'
+import { SessionCapacity } from './session-capacity'
 import { toast } from 'sonner'
 import type { StudentDashboard as StudentDashboardData, DayGroup } from '@/lib/types'
 
@@ -56,6 +60,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
   const [extOpen, setExtOpen] = useState(false)
   const [extRequests, setExtRequests] = useState<ExtensionRequestRow[]>([])
   const [extLoading, setExtLoading] = useState(false)
+  const [expandedSession, setExpandedSession] = useState<string | null>(null)
 
   const loadExtRequests = useCallback(async () => {
     setExtLoading(true)
@@ -254,6 +259,8 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
               day={today}
               isToday
               quotaExhausted={quota.exhausted}
+              expandedSession={expandedSession}
+              onToggleExpand={setExpandedSession}
               onCheckIn={(s) => setFlowSession({
                 id: s.id,
                 sessionNumber: s.sessionNumber,
@@ -287,7 +294,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
             <EmptyState icon={Calendar} text="Tidak ada jadwal mendatang" />
           ) : (
             upcomingDays.slice(0, 10).map((d) => (
-              <DayGroupCard key={d.dayKey} day={d} quotaExhausted={quota.exhausted} onCheckIn={(s) => setFlowSession({
+              <DayGroupCard key={d.dayKey} day={d} quotaExhausted={quota.exhausted} expandedSession={expandedSession} onToggleExpand={setExpandedSession} onCheckIn={(s) => setFlowSession({
                 id: s.id, sessionNumber: s.sessionNumber, title: s.title, date: d.date, startTime: s.startTime, endTime: s.endTime, room: s.room, notes: null,
               })} />
             ))
@@ -298,7 +305,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
             <EmptyState icon={History} text="Belum ada riwayat kehadiran" />
           ) : (
             recentDays.map((d) => (
-              <DayGroupCard key={d.dayKey} day={d} isHistory quotaExhausted={quota.exhausted} onCheckIn={() => {}} />
+              <DayGroupCard key={d.dayKey} day={d} isHistory quotaExhausted={quota.exhausted} expandedSession={expandedSession} onToggleExpand={setExpandedSession} onCheckIn={() => {}} />
             ))
           )}
         </TabsContent>
@@ -389,12 +396,16 @@ function DayGroupCard({
   isHistory = false,
   quotaExhausted,
   onCheckIn,
+  expandedSession,
+  onToggleExpand,
 }: {
   day: DayGroup
   isToday?: boolean
   isHistory?: boolean
   quotaExhausted: boolean
   onCheckIn: (s: DayGroup['sessions'][number]) => void
+  expandedSession: string | null
+  onToggleExpand: (id: string | null) => void
 }) {
   const dateLabel = new Date(day.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const attendedSession = day.sessions.find((s) => s.id === day.attendedSessionId)
@@ -470,9 +481,33 @@ function DayGroupCard({
                     {s.teacher && <span>· {s.teacher}</span>}
                     {s.platform && <span>· {s.platform}</span>}
                   </div>
+                  {/* Capacity indicator */}
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                    <Users className="h-3 w-3 text-muted-foreground" />
+                    <span className={s.attendeeCount >= s.maxAttendees ? 'font-semibold text-destructive' : 'text-muted-foreground'}>
+                      {s.attendeeCount}/{s.maxAttendees}
+                    </span>
+                    {s.attendeeCount >= s.maxAttendees ? (
+                      <Badge variant="destructive" className="h-4 px-1.5 text-[9px]">PENUH</Badge>
+                    ) : (
+                      <span className="text-muted-foreground/70">({s.maxAttendees - s.attendeeCount} slot)</span>
+                    )}
+                    {/* Expand button to see who's checked in */}
+                    {!isHistory && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onToggleExpand(expandedSession === s.id ? null : s.id) }}
+                        className="ml-auto flex items-center gap-0.5 text-primary hover:underline"
+                      >
+                        {expandedSession === s.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        <span>detail</span>
+                      </button>
+                    )}
+                  </div>
                   {!canCheckIn && !attendedSession && !isHistory && s.checkInWindow.message && (
                     <p className="mt-0.5 text-[10px] text-muted-foreground/70">{s.checkInWindow.message}</p>
                   )}
+                  {/* Expanded capacity panel */}
+                  <SessionCapacity sessionId={s.id} isOpen={expandedSession === s.id} />
                 </div>
                 {canCheckIn ? (
                   <Button size="sm" onClick={() => onCheckIn(s)} className="shrink-0 gap-1">

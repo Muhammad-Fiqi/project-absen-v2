@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentStudent } from '@/lib/auth'
-import { verifyQrPayload } from '@/lib/security'
+import { verifyQrPayload, verifyRotatingCode } from '@/lib/security'
 import type { AttendanceSubmitRequest, AttendanceSubmitResponse } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -126,14 +126,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     reason: capacityOk ? undefined : `Kapasitas sesi penuh (${currentAttendeeCount}/${session.maxAttendees})`,
   }
 
-  // === QR CHECK ===
+  // === QR OR CODE CHECK ===
   let qrValid = false
+  let verifyMethod = 'none'
   if (body.qr && session.qrSecret) {
+    // Method 1: QR scan
     const v = verifyQrPayload(body.qr, session.qrSecret, now)
     checks.qr = { passed: v.valid, reason: v.reason }
     qrValid = v.valid
+    verifyMethod = 'qr'
+  } else if (body.code && session.qrSecret) {
+    // Method 2: Manual 6-digit code
+    const v = verifyRotatingCode(body.code, sessionId, session.qrSecret, now)
+    checks.code = { passed: v.valid, reason: v.reason }
+    qrValid = v.valid
+    verifyMethod = 'code'
   } else {
-    checks.qr = { passed: false, reason: 'QR tidak disertakan' }
+    checks.qr = { passed: false, reason: 'QR atau kode tidak disertakan' }
   }
 
   // === DETERMINE VERIFICATION ===
@@ -149,7 +158,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       dayKey: dk,
       qrVerified: qrValid,
       verified,
-      notes: !verified ? 'QR verification failed or checks not passed' : null,
+      notes: !verified ? `${verifyMethod === 'code' ? 'Kode' : 'QR'} verification failed or checks not passed` : null,
     },
   })
 
@@ -162,7 +171,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ? status === 'late'
         ? `Absensi tercatat (TERLAMBAT). Sisa kuota: ${newRemaining} sesi.`
         : `Absensi berhasil! Sisa kuota: ${newRemaining} sesi.`
-      : `Absensi GAGAL — QR tidak terverifikasi. Kuota tidak terpotong.`,
+      : `Absensi GAGAL — ${verifyMethod === 'code' ? 'Kode' : 'QR'} tidak terverifikasi. Kuota tidak terpotong.`,
     checks,
     quotaRemaining: newRemaining,
   }

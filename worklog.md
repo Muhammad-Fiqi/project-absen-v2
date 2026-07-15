@@ -104,4 +104,26 @@ Work Log:
 - Termasuk arsitektur diagram
 
 Stage Summary:
-- SETUP.md lengkap siap digunakan
+- SETUP.md lengkap siap digunakan---
+Task ID: 1
+Agent: main
+Task: Implement dual attendance method (QR + manual code), session capacity display for students
+
+Work Log:
+- Added buildRotatingCode() and verifyRotatingCode() to security.ts — 6-digit code derived from same HMAC window as QR, rotates every 20 seconds
+- Updated /api/sessions/[id]/qr to return rotatingCode, attendeeList (names), slotsRemaining, isFull
+- Created /api/sessions/[id]/capacity — student-accessible endpoint showing real-time capacity, attendee names, and personal block reasons
+- Updated /api/sessions/[id]/attendance to accept body.code (6-digit) as alternative to body.qr
+- Updated AttendanceSubmitRequest and AttendanceSubmitResponse types to include code field
+- Created SessionCapacity component — shows progress bar, slot count, PENUH badge, attendee list with names/times
+- Updated student-dashboard.tsx DayGroupCard to show capacity indicator (X/10 + slot tersisa/PENUH badge), expandable detail panel
+- Rewrote attendance-flow.tsx — added Tabs with "Scan QR" and "Input Kode" options, 6-digit code input with visual digit boxes
+- Updated qr-display.tsx — replaced old PIN with prominent 6-digit rotating code display, added capacity card, attendee list section
+- Fixed QR scanner crash on tab switch by adding active prop and better cleanup
+
+Stage Summary:
+- Both QR scan and manual 6-digit code input working as attendance methods
+- Students can see real-time capacity: X/10, slot tersisa, PENUH badge
+- Students can expand session detail to see who already checked in (names + times)
+- Teacher QR Live tab shows: rotating 6-digit code, capacity status, attendee list
+- Code attendance verified via API: PTE002 successfully checked in with code 510088

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { Camera, Loader2, ScanLine, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,20 +9,44 @@ import { toast } from 'sonner'
 interface QrScannerProps {
   onScan: (decoded: string) => void
   onClose?: () => void
+  active?: boolean
 }
 
-export function QrScanner({ onScan, onClose }: QrScannerProps) {
+export function QrScanner({ onScan, onClose, active = true }: QrScannerProps) {
   const containerId = 'pte-qr-reader'
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const [status, setStatus] = useState<'starting' | 'running' | 'error' | 'stopped'>('starting')
   const [errorMsg, setErrorMsg] = useState<string>('')
 
+  const stopScanner = useCallback(async () => {
+    const s = scannerRef.current
+    scannerRef.current = null
+    if (s) {
+      try {
+        const state = await s.getState()
+        if (state !== 2) { // 2 = NOT_STARTED
+          await s.stop()
+        }
+      } catch {
+        /* ignore stop errors */
+      }
+      try {
+        await s.clear()
+      } catch {
+        /* ignore clear errors */
+      }
+    }
+  }, [])
+
   useEffect(() => {
+    if (!active) return
     let mounted = true
     async function start() {
       try {
         const el = document.getElementById(containerId)
         if (!el) return
+        // Make sure container is empty before starting
+        el.innerHTML = ''
         const scanner = new Html5Qrcode(containerId, { verbose: false })
         scannerRef.current = scanner
         await scanner.start(
@@ -30,8 +54,10 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
           { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
           (decodedText) => {
             if (!mounted) return
-            // Stop scanner then report
-            scanner.stop().then(() => scanner.clear()).catch(() => {}).finally(() => {
+            stopScanner().then(() => {
+              setStatus('stopped')
+              onScan(decodedText)
+            }).catch(() => {
               setStatus('stopped')
               onScan(decodedText)
             })
@@ -46,32 +72,23 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
         setStatus('error')
         const msg = e instanceof Error ? e.message : 'Tidak bisa mengakses kamera'
         setErrorMsg(msg)
-        toast.error('Kamera tidak tersedia. Gunakan tombol PIN saja jika kamera bermasalah.')
+        toast.error('Kamera tidak tersedia. Gunakan Input Kode jika kamera bermasalah.')
       }
     }
     start()
     return () => {
       mounted = false
-      const s = scannerRef.current
-      if (s) {
-        s.stop().then(() => s.clear()).catch(() => {})
-      }
+      stopScanner()
     }
-  }, [])
+  }, [active, onScan, stopScanner])
 
   async function handleStop() {
-    const s = scannerRef.current
-    if (s) {
-      try {
-        await s.stop()
-        await s.clear()
-      } catch {
-        /* ignore */
-      }
-    }
+    await stopScanner()
     setStatus('stopped')
     onClose?.()
   }
+
+  if (!active) return null
 
   return (
     <div className="space-y-3">

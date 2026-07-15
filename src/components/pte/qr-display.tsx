@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import QRCode from 'qrcode'
 import {
   QrCode, RefreshCw, KeyRound, Clock, Loader2, Copy, Check, Maximize2,
-  Users, TrendingUp, Video, Building2, Sparkles, Calendar,
+  Users, TrendingUp, Video, Building2, Sparkles, Calendar, CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -24,12 +24,15 @@ interface QrDisplayProps {
 
 interface QrData {
   qr: { sessionId: string; token: string; ts: number; window: number; hmac: string }
-  sessionPin: string
+  rotatingCode: string
   serverTime: string
   nextRotationAt: string
   rotationSeconds: number
   attendeeCount: number
+  attendeeList: Array<{ name: string; studentCode: string; status: string; checkInTime: string }>
   totalStudents: number
+  slotsRemaining: number
+  isFull: boolean
   session: {
     id: string
     sessionNumber: number
@@ -39,6 +42,7 @@ interface QrData {
     platform: string | null
     teacher: string | null
     topicOfDay: string | null
+    maxAttendees: number
   }
   course: { code: string; name: string }
 }
@@ -97,14 +101,6 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
     }
   }, [fetchQr])
 
-  function copyPin() {
-    if (!data?.sessionPin) return
-    navigator.clipboard.writeText(data.sessionPin)
-    setCopied(true)
-    toast.success('PIN disalin')
-    setTimeout(() => setCopied(false), 1500)
-  }
-
   if (loading || !data) {
     return (
       <div className="space-y-4">
@@ -122,6 +118,7 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
 
   const progressPct = ((20 - countdown) / 20) * 100
   const attendeePct = data.totalStudents > 0 ? Math.round((data.attendeeCount / data.totalStudents) * 100) : 0
+  const capacityPct = data.session.maxAttendees > 0 ? Math.round((data.attendeeCount / data.session.maxAttendees) * 100) : 0
   const ModeIcon = data.session.mode === 'online' ? Video : Building2
 
   // Format live clock
@@ -166,33 +163,38 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
             </CardContent>
           </Card>
 
-          {/* Attendee Counter */}
-          <Card className="relative overflow-hidden border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent transition-transform hover:-translate-y-0.5">
+          {/* Attendee Counter with capacity */}
+          <Card className={`relative overflow-hidden transition-transform hover:-translate-y-0.5 ${
+            data.isFull ? 'border-destructive/30 bg-destructive/5' : 'border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent'
+          }`}>
             <CardContent className="relative p-5">
               <div className="mb-1 flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Users className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  Kehadiran Live
+                  Kapasitas Kelas
                 </span>
-                <Badge variant="outline" className="gap-1 text-[10px] text-emerald-700 dark:text-emerald-300">
-                  <TrendingUp className="h-3 w-3" /> {attendeePct}%
+                <Badge
+                  variant={data.isFull ? 'destructive' : 'outline'}
+                  className={`gap-1 text-[10px] ${!data.isFull ? 'text-emerald-700 dark:text-emerald-300' : ''}`}
+                >
+                  {data.isFull ? 'PENUH' : `${data.slotsRemaining} slot tersisa`}
                 </Badge>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 sm:text-5xl">
+                <span className={`text-4xl font-bold tabular-nums sm:text-5xl ${data.isFull ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
                   {data.attendeeCount}
                 </span>
                 <span className="text-sm font-medium text-muted-foreground">
-                  dari {data.totalStudents} siswa
+                  / {data.session.maxAttendees} max
                 </span>
               </div>
-              <Progress value={attendeePct} className="mt-2 h-2 [&>div]:bg-emerald-500" />
+              <Progress value={capacityPct} className={`mt-2 h-2 ${data.isFull ? '[&>div]:bg-destructive' : capacityPct >= 80 ? '[&>div]:bg-amber-500' : '[&>div]:bg-emerald-500'}`} />
               <p className="mt-1.5 text-xs text-muted-foreground">
-                {data.attendeeCount === 0
+                {data.isFull
+                  ? 'Kelas sudah penuh — tidak bisa absen lagi'
+                  : data.attendeeCount === 0
                   ? 'Belum ada yang absen'
-                  : data.attendeeCount >= data.totalStudents
-                  ? 'Semua siswa sudah absen 🎉'
-                  : `${data.totalStudents - data.attendeeCount} siswa lagi belum absen`}
+                  : `${data.slotsRemaining} slot lagi tersedia`}
               </p>
             </CardContent>
           </Card>
@@ -274,17 +276,26 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
 
               {/* Info */}
               <div className="flex flex-col justify-center space-y-3">
-                <div className="rounded-xl bg-muted/40 p-3">
-                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <KeyRound className="h-3.5 w-3.5" /> PIN Sesi
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <code className="font-mono text-2xl font-bold tracking-[0.3em]">{data.sessionPin}</code>
-                    <Button variant="ghost" size="sm" onClick={copyPin} className="h-7 w-7 p-0">
+                {/* 6-DIGIT CODE — prominent */}
+                <div className="rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <KeyRound className="h-3.5 w-3.5" /> Kode Absensi
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(data.rotatingCode); setCopied(true); toast.success('Kode disalin'); setTimeout(() => setCopied(false), 1500) }} className="h-7 w-7 p-0">
                       {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
                     </Button>
                   </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Berikan PIN ini ke siswa</p>
+                  <div className="flex items-center justify-center gap-2">
+                    {data.rotatingCode.split('').map((ch, i) => (
+                      <div key={i} className="flex h-12 w-9 items-center justify-center rounded-lg bg-background text-2xl font-bold tabular-nums text-primary shadow-sm sm:h-14 sm:w-11 sm:text-3xl">
+                        {ch}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                    Baca kode ini ke siswa atau siswa bisa scan QR
+                  </p>
                 </div>
 
                 <div className="rounded-xl border border-dashed border-border/60 p-3">
@@ -293,7 +304,7 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
                     Berputar setiap {data.rotationSeconds} detik
                   </div>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    QR lama tidak bisa dipakai lagi — mencegah siswa foto & bagikan QR.
+                    QR & kode lama tidak bisa dipakai lagi — mencegah siswa foto & bagikan.
                   </p>
                 </div>
 
@@ -304,6 +315,44 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Attendee list */}
+        <Card className="border-border/60">
+          <CardContent className="p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                Siswa Sudah Absen ({data.attendeeCount})
+              </h3>
+              {data.attendeeCount > 0 && (
+                <Badge variant="outline" className="text-[10px] text-emerald-700 dark:text-emerald-300">
+                  {data.attendeeCount}/{data.session.maxAttendees}
+                </Badge>
+              )}
+            </div>
+            {data.attendeeList.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">
+                Belum ada siswa yang absen di sesi ini
+              </p>
+            ) : (
+              <div className="max-h-48 space-y-1.5 overflow-y-auto scrollbar-thin">
+                {data.attendeeList.map((a, i) => (
+                  <div key={i} className="flex items-center gap-2 rounded-lg bg-muted/30 px-3 py-2 text-xs">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    <span className="min-w-0 flex-1 font-medium">{a.name}</span>
+                    <span className="text-muted-foreground">{a.studentCode}</span>
+                    <span className="text-muted-foreground">
+                      {new Date(a.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {a.status === 'late' && (
+                      <Badge variant="outline" className="h-5 px-1.5 text-[9px] text-amber-600">terlambat</Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
@@ -312,8 +361,8 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
             <div className="text-center">
               <h2 className="text-xl font-bold">{sessionTitle}</h2>
               <p className="text-sm text-muted-foreground">
-                Pindai QR ini untuk absen · PIN:{' '}
-                <code className="font-mono font-bold text-primary">{data.sessionPin}</code>
+                Pindai QR atau masukkan kode untuk absen · Kode:{' '}
+                <code className="font-mono text-lg font-bold text-primary">{data.rotatingCode}</code>
               </p>
             </div>
             <div className="font-mono text-3xl font-bold tabular-nums text-primary">

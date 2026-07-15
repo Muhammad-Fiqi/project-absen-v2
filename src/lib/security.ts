@@ -56,6 +56,47 @@ export function buildQrPayload(sessionId: string, qrSecret: string, now: Date = 
 }
 
 /**
+ * Generate a 6-digit rotating code from the same window as QR.
+ * This code changes every QR_ROTATION_SECONDS seconds.
+ */
+export function buildRotatingCode(sessionId: string, qrSecret: string, now: Date = new Date()): string {
+  const ts = now.getTime()
+  const window = Math.floor(ts / 1000 / QR_ROTATION_SECONDS)
+  const payload = `CODE:${sessionId}.${window}`
+  const hmac = crypto.createHmac('sha256', qrSecret).update(payload).digest('hex')
+  // Take 6 digits from hex, map to 0-9
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += hmac.charCodeAt(i) % 10
+  }
+  return code
+}
+
+/**
+ * Verify a 6-digit rotating code against the session's secret.
+ */
+export function verifyRotatingCode(
+  code: string,
+  sessionId: string,
+  qrSecret: string,
+  now: Date = new Date()
+): { valid: boolean; reason?: string } {
+  if (!code || code.length !== 6 || !/\d{6}/.test(code)) {
+    return { valid: false, reason: 'Kode harus 6 digit angka' }
+  }
+  const validCodes = [now]
+  // Accept previous window too (20 seconds ago)
+  validCodes.push(new Date(now.getTime() - QR_ROTATION_SECONDS * 1000))
+  for (const t of validCodes) {
+    const expected = buildRotatingCode(sessionId, qrSecret, t)
+    if (expected === code) {
+      return { valid: true }
+    }
+  }
+  return { valid: false, reason: 'Kode sudah kedaluwarsa atau tidak valid' }
+}
+
+/**
  * Verify a scanned QR payload against the session's secret.
  */
 export function verifyQrPayload(
