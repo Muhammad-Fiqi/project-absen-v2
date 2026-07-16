@@ -9,12 +9,12 @@
 // - Each student has a personal session quota.
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/client"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 // ===================== Admin / Teacher =====================
