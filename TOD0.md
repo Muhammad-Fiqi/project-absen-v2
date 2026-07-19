@@ -1,0 +1,17 @@
+- [x] Update SETUP.md to be Windows-only:
+  - [x] Remove WSL/Turso CLI instructions
+  - [x] Replace Turso steps with “use Turso dashboard” (get DATABASE_URL + DATABASE_AUTH_TOKEN)
+- [ ] Debug on Windows local using SQLite:
+  - [x] bun install
+  - [x] bunx prisma generate
+  - [x] bunx prisma db push
+  - [x] bun run dev (port 3000)
+  - [x] POST http://localhost:3000/api/setup
+  - [x] GET http://localhost:3000/api/setup and confirm needsSetup=false + stats updated
+  - [x] Spot-check auth: POST /api/auth/student (200)
+  - [x] Spot-check API: GET /api/me (200)
+
+- [ ] If Prisma fails due to schema/seed mismatch:
+  - [ ] Ensure only /api/setup seeding is used for debug
+  - [ ] Adjust SETUP.md to use correct seeding method
+- [x] Final verification: confirm backend + database working end-to-end

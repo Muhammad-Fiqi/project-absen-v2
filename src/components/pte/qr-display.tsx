@@ -51,12 +51,39 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
   const [data, setData] = useState<QrData | null>(null)
   const [loading, setLoading] = useState(true)
   const [qrDataUrl, setQrDataUrl] = useState<string>('')
-  const [countdown, setCountdown] = useState<number>(20)
+  const [countdown, setCountdown] = useState<number>(24 * 60 * 60)
   const [fullscreen, setFullscreen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [now, setNow] = useState<Date>(new Date())
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const rotationSeconds = data?.rotationSeconds ?? 24 * 60 * 60
+
+  const formatDuration = (seconds: number) => {
+    const days = Math.floor(seconds / 86400)
+    const hours = Math.floor((seconds % 86400) / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+
+    if (days > 0) {
+      return `${days} hari${hours > 0 ? ` ${hours} jam` : ''}`
+    }
+    if (hours > 0) {
+      return `${hours} jam ${minutes} menit`
+    }
+    if (minutes > 0) {
+      return `${minutes} menit ${secs} detik`
+    }
+    return `${secs} detik`
+  }
+
+  const formatRotationLabel = (seconds: number) => {
+    if (seconds % 86400 === 0) return `${seconds / 86400} hari`
+    if (seconds % 3600 === 0) return `${seconds / 3600} jam`
+    if (seconds % 60 === 0) return `${seconds / 60} menit`
+    return `${seconds} detik`
+  }
 
   const fetchQr = useCallback(async () => {
     try {
@@ -86,7 +113,7 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
       setCountdown((c) => {
         if (c <= 1) {
           fetchQr()
-          return 20
+          return rotationSeconds
         }
         return c - 1
       })
@@ -99,7 +126,7 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
       if (timerRef.current) clearInterval(timerRef.current)
       if (tickRef.current) clearInterval(tickRef.current)
     }
-  }, [fetchQr])
+  }, [fetchQr, rotationSeconds])
 
   if (loading || !data) {
     return (
@@ -116,7 +143,7 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
     )
   }
 
-  const progressPct = ((20 - countdown) / 20) * 100
+  const progressPct = ((rotationSeconds - countdown) / rotationSeconds) * 100
   const attendeePct = data.totalStudents > 0 ? Math.round((data.attendeeCount / data.totalStudents) * 100) : 0
   const capacityPct = data.session.maxAttendees > 0 ? Math.round((data.attendeeCount / data.session.maxAttendees) * 100) : 0
   const ModeIcon = data.session.mode === 'online' ? Video : Building2
@@ -269,7 +296,7 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
                     />
                   </svg>
                   <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground shadow-sm">
-                    {countdown}s
+                    {formatDuration(countdown)}
                   </div>
                 </div>
               </div>
@@ -301,7 +328,7 @@ export function QrDisplay({ sessionId, sessionTitle }: QrDisplayProps) {
                 <div className="rounded-xl border border-dashed border-border/60 p-3">
                   <div className="flex items-center gap-1.5 text-xs font-medium">
                     <RefreshCw className="h-3.5 w-3.5 text-primary" />
-                    Berputar setiap {data.rotationSeconds} detik
+                    Berputar setiap {formatRotationLabel(data.rotationSeconds)}
                   </div>
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     QR & kode lama tidak bisa dipakai lagi — mencegah siswa foto & bagikan.

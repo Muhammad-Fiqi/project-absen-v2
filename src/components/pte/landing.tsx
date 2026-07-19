@@ -11,7 +11,7 @@ interface LandingProps {
 }
 
 const features = [
-  { icon: QrCode, title: 'QR Dinamis', desc: 'QR berputar setiap 20 detik, anti-foto screenshot' },
+  { icon: QrCode, title: 'QR Dinamis', desc: 'QR berputar setiap 24 jam, anti-foto screenshot' },
   { icon: Clock, title: 'Jendela Waktu', desc: 'Absensi hanya dibuka saat sesi berlangsung' },
   { icon: BarChart3, title: 'Laporan Real-time', desc: 'Pantau 20 pertemuan & tingkat kehadiran' },
 ]

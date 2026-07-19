@@ -1,6 +1,6 @@
-# PTE Attendance — Panduan Setup Lengkap (Vercel + Turso)
+# PTE Attendance — Panduan Setup Lengkap (Windows + Vercel + Turso)
 
-Panduan ini mencakup **seluruh proses** dari nol sampai aplikasi berjalan online.
+Panduan ini mencakup **seluruh proses** dari nol sampai aplikasi berjalan online, dengan fokus **Windows saja** (tanpa WSL, tanpa Turso CLI).
 Teknologi yang digunakan: **Bun** (runtime), **Vercel** (hosting), **Turso** (database cloud).
 
 ---
@@ -88,7 +88,7 @@ git --version
 
 ---
 
-## 3. Setup Project Lokal
+## 3. Setup Project Lokal (Windows saja)
 
 ### Clone Repository
 
@@ -99,16 +99,9 @@ git clone https://github.com/USERNAME/pte-attendance.git
 cd pte-attendance
 ```
 
-**WSL Ubuntu:**
-```bash
-cd ~/projects
-git clone https://github.com/USERNAME/pte-attendance.git
-cd pte-attendance
-```
-
 ### Install Dependencies
 
-```bash
+```cmd
 bun install
 ```
 
@@ -116,27 +109,27 @@ bun install
 
 Buat folder database (jika belum ada):
 
-```bash
-mkdir -p db
+```cmd
+mkdir db
 ```
 
 Buat file `.env` di root project:
 
-```bash
+```env
 # Untuk development lokal (SQLite file)
 DATABASE_URL=file:db/custom.db
 ```
 
 ### Generate Prisma Client & Push Schema
 
-```bash
+```cmd
 bunx prisma generate
 bunx prisma db push
 ```
 
 ### Jalankan Development Server
 
-```bash
+```cmd
 bun run dev
 ```
 
@@ -144,15 +137,9 @@ Buka browser ke `http://localhost:3000`
 
 ### Seed Data Awal (Development)
 
-Buka terminal baru, jalankan:
+Jalankan seeding endpoint:
 
-**CMD (Windows):**
 ```cmd
-curl -X POST http://localhost:3000/api/setup
-```
-
-**WSL Ubuntu / macOS / Linux:**
-```bash
 curl -X POST http://localhost:3000/api/setup
 ```
 
@@ -163,96 +150,45 @@ Akun demo:
 
 ---
 
-## 4. Registrasi & Setup Turso (Database Cloud)
+## 4. Registrasi & Setup Turso (Database Cloud) - Windows (tanpa Turso CLI)
 
 Turso menyediakan database SQLite di cloud secara gratis (hingga 500 database, 9GB total).
 
-### 4.1. Install Turso CLI
+### 4.1. Buat Database via Dashboard (Windows saja)
 
-**Windows (CMD / PowerShell):**
-```cmd
-bun add -g @libsql/client
-```
+Turso menyediakan database SQLite di cloud secara gratis (hingga 500 database, 9GB total).
 
-> Turso CLI tidak tersedia langsung di Windows CMD. Gunakan WSL atau manage database via dashboard Turso di https://turso.tech/app.
+1. Buka: https://turso.tech/app
+2. Sign up / Login
+3. Klik **Create Database**
+   - Nama: `pte-attendance` (boleh bebas, tapi konsisten)
+   - Region: pilih yang terdekat
+4. Setelah database dibuat, buka halaman database tersebut → **Settings**
+5. Cari bagian **Connection info**
+6. Copy **URL**
+7. Klik **Create Auth Token**
+8. Copy **token**
 
-**WSL Ubuntu:**
-```bash
-curl -sSfL https://get.tur.so/install.sh | bash
-```
-
-Cek instalasi:
-
-**WSL Ubuntu:**
-```bash
-turso --version
-```
-
-### 4.2. Login ke Turso
-
-**WSL Ubuntu:**
-```bash
-turso auth login
-```
-
-Browser akan terbuka untuk autentikasi. Jika di server tanpa browser:
-
-```bash
-turso auth api-tokens create pte-attendance --expiry 90d
-```
-
-Simpan token yang muncul.
-
-### 4.3. Buat Database
-
-**WSL Ubuntu:**
-```bash
-turso db create pte-attendance
-```
-
-Atau buat via dashboard: https://turso.tech/app/databases/new
-
-### 4.4. Ambil Koneksi String
-
-**WSL Ubuntu:**
-```bash
-turso db show pte-attendance --url
-turso db tokens create pte-attendance
-```
-
-Atau via dashboard: klik database → Settings → Connection info
-
-Simpan kedua nilai ini:
-- `DATABASE_URL` → berbentuk `libsql://pte-attendance-USERNAME.turso.io`
+Simpan 2 nilai ini:
+- `DATABASE_URL` → contoh: `libsql://pte-attendance-USERNAME.turso.io`
 - `DATABASE_AUTH_TOKEN` → token string panjang
 
-### 4.5. Push Schema ke Turso
+### 4.2. Push Schema Prisma ke Turso (Windows)
 
-**WSL Ubuntu:**
+Buat file `.env.production` sementara (untuk memudahkan push):
 
-Buat file `.env.production` sementara:
-
-```bash
+```env
 DATABASE_URL="libsql://pte-attendance-USERNAME.turso.io"
 DATABASE_AUTH_TOKEN="token-anda-disini"
 ```
 
 Lalu push schema:
 
-```bash
+```cmd
 bunx prisma db push
 ```
 
-### 4.6. (Alternatif) Tanpa CLI — Gunakan Dashboard Turso
-
-Jika kamu di Windows CMD tanpa WSL:
-
-1. Buka https://turso.tech/app
-2. Sign up / Login
-3. Klik **"Create Database"** → nama: `pte-attendance` → region pilih yang terdekat
-4. Setelah dibuat, klik database → **Settings**
-5. Copy **URL** dan klik **"Create Auth Token"**
-6. Gunakan URL dan token tersebut di langkah Vercel (bagian 5)
+> Pastikan `DATABASE_URL` diawali `libsql://` agar driver Turso aktif.
 
 ---
 
@@ -263,22 +199,16 @@ Jika kamu di Windows CMD tanpa WSL:
 1. Buka https://vercel.com/signup
 2. Login dengan akun GitHub
 
-### 5.2. Install Vercel CLI
+### 5.2. Install Vercel CLI (Windows)
 
 **Windows CMD:**
 ```cmd
 bun add -g vercel
 ```
 
-**WSL Ubuntu:**
-```bash
-bun add -g vercel
-```
+### 5.3. Login ke Vercel CLI (Windows)
 
-### 5.3. Login ke Vercel CLI
-
-**CMD / WSL:**
-```bash
+```cmd
 vercel login
 ```
 
@@ -342,13 +272,11 @@ Vercel otomatis mendeteksi Next.js. Tapi pastikan:
 
 ## 6. Deploy ke Vercel
 
-### 6.1. Deploy Pertama Kali
-
-**CMD / WSL:**
+### 6.1. Deploy Pertama Kali (Windows)
 
 Pastikan sudah commit semua perubahan ke Git:
 
-```bash
+```cmd
 git add .
 git commit -m "initial commit: PTE attendance QR-only"
 git push origin main
@@ -356,7 +284,7 @@ git push origin main
 
 Lalu deploy:
 
-```bash
+```cmd
 vercel --prod
 ```
 
@@ -434,15 +362,10 @@ Seed hanya berjalan sekali. Jika database sudah ada data, endpoint akan menolak.
 | Tambah env var | `vercel env add NAMA production` |
 | Lihat env vars | `vercel env ls` |
 
-### Command Turso (WSL Ubuntu saja)
+### Command Turso
 
-| Kegunaan | Command |
-|----------|---------|
-| Login | `turso auth login` |
-| Buat database | `turso db create pte-attendance` |
-| Lihat URL | `turso db show pte-attendance --url` |
-| Buat token | `turso db tokens create pte-attendance` |
-| Lihat database list | `turso db list` |
+Karena panduan ini Windows-only (tanpa Turso CLI), langkah Turso dilakukan via dashboard:
+- https://turso.tech/app
 
 ---
 

@@ -225,7 +225,7 @@ export function AttendanceFlow({
                     Input Kode 6 Digit
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Minta kode 6 digit kepada pengajar. Kode berubah setiap 20 detik — pastikan kode masih baru.
+                    Minta kode 6 digit kepada pengajar. Kode berubah setiap 24 jam — pastikan kode masih baru.
                   </p>
                 </div>
 
@@ -258,7 +258,7 @@ export function AttendanceFlow({
                     className="text-center font-mono text-lg tracking-[0.5em]"
                   />
                   <p className="text-center text-[11px] text-muted-foreground">
-                    Kode berputar otomatis setiap 20 detik. Pastikan Anda mendapat kode terbaru dari pengajar.
+                    Kode berputar otomatis setiap 24 jam. Pastikan Anda mendapat kode terbaru dari pengajar.
                   </p>
                 </div>
               </TabsContent>

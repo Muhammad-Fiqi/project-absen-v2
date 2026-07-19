@@ -36,9 +36,9 @@ export function verifySignature(payload: string, signature: string): boolean {
 /**
  * Build a signed QR payload for a session.
  * Format: {sessionId, token, ts, hmac}
- * The token rotates every ROTATION_SECONDS seconds.
+ * The token rotates every ROTATION_SECONDS seconds (24 hours).
  */
-export const QR_ROTATION_SECONDS = 20
+export const QR_ROTATION_SECONDS = 24 * 60 * 60
 
 export function buildQrPayload(sessionId: string, qrSecret: string, now: Date = new Date()): {
   sessionId: string
