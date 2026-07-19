@@ -16,18 +16,18 @@ interface StudentLoginProps {
 
 export function StudentLogin({ onBack, onSuccess }: StudentLoginProps) {
   const [studentCode, setStudentCode] = useState('')
-  const [pin, setPin] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!studentCode || !pin) return
+    if (!studentCode || !password) return
     setLoading(true)
     try {
       const res = await apiPost<{
         success: boolean
         student: { id: string; studentCode: string; name: string; email: string | null; phone: string | null; courseCode: string; courseId: string | null; courseName?: string }
-      }>('/api/auth/student', { studentCode, pin })
+      }>('/api/auth/student', { studentCode, password })
       toast.success('Berhasil masuk!')
       onSuccess(res.student)
     } catch (err) {
@@ -52,7 +52,7 @@ export function StudentLogin({ onBack, onSuccess }: StudentLoginProps) {
           </div>
           <CardTitle className="text-xl">Login Siswa</CardTitle>
           <CardDescription>
-            Masuk dengan kode siswa dan PIN pribadi Anda
+            Masuk dengan kode siswa dan password default Anda
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -73,23 +73,22 @@ export function StudentLogin({ onBack, onSuccess }: StudentLoginProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pin">PIN</Label>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  id="pin"
+                  id="password"
                   type="password"
-                  inputMode="numeric"
-                  placeholder="4 digit PIN"
+                  placeholder="sukseswhv2026"
                   className="pl-9"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   required
                 />
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Demo: PIN = 4 digit terakhir kode siswa (PTE001 → 0001)
+                Demo: gunakan password default <code className="rounded bg-muted px-1.5 py-0.5">sukseswhv2026</code>
               </p>
             </div>
             <Button type="submit" className="w-full gap-2" disabled={loading}>

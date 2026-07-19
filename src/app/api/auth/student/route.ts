@@ -2,17 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { student, course, attendance } from '@/db/schema'
-import { verifyPin } from '@/lib/security'
 import { applyStudentCookie } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
-// POST /api/auth/student — student login with studentCode + PIN
+// POST /api/auth/student — student login with studentCode + password
 export async function POST(req: NextRequest) {
   try {
-    const { studentCode, pin } = await req.json()
-    if (!studentCode || !pin) {
-      return NextResponse.json({ error: 'Kode siswa dan PIN wajib diisi' }, { status: 400 })
+    const { studentCode, password } = await req.json()
+    if (!studentCode || !password) {
+      return NextResponse.json({ error: 'Kode siswa dan password wajib diisi' }, { status: 400 })
     }
 
     const rows = await db
@@ -24,8 +23,8 @@ export async function POST(req: NextRequest) {
     if (!studentRow) {
       return NextResponse.json({ error: 'Kode siswa tidak ditemukan' }, { status: 404 })
     }
-    if (!studentRow.pinHash || !verifyPin(pin, studentRow.pinHash)) {
-      return NextResponse.json({ error: 'PIN salah' }, { status: 401 })
+    if (password !== studentRow.pinHash) {
+      return NextResponse.json({ error: 'Password salah' }, { status: 401 })
     }
 
     // Look up course name if available

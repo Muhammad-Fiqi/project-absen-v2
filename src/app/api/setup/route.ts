@@ -76,11 +76,11 @@ export async function POST() {
 
     // 3) Sample students
     const students = [
-      { code: 'PTE001', name: 'Andi Pratama', pin: '0001', quota: 15 },
-      { code: 'PTE002', name: 'Budi Santoso', pin: '0002', quota: 12 },
-      { code: 'PTE003', name: 'Cinta Dewi', pin: '0003', quota: 20 },
-      { code: 'PTE004', name: 'Dimas Aji', pin: '0004', quota: 10 },
-      { code: 'PTE005', name: 'Eka Putri', pin: '0005', quota: 10 },
+      { code: 'PTE001', name: 'Andi Pratama', password: 'sukseswhv2026', quota: 15 },
+      { code: 'PTE002', name: 'Budi Santoso', password: 'sukseswhv2026', quota: 12 },
+      { code: 'PTE003', name: 'Cinta Dewi', password: 'sukseswhv2026', quota: 20 },
+      { code: 'PTE004', name: 'Dimas Aji', password: 'sukseswhv2026', quota: 10 },
+      { code: 'PTE005', name: 'Eka Putri', password: 'sukseswhv2026', quota: 10 },
     ]
 
     await db.insert(student).values(
@@ -88,7 +88,7 @@ export async function POST() {
         id: cuidLike(),
         studentCode: s.code,
         name: s.name,
-        pinHash: hashPin(s.pin),
+        pinHash: s.password,
         courseCode: courseRow.code,
         courseId: courseId,
         sessionQuota: s.quota,
@@ -111,7 +111,7 @@ export async function POST() {
       loginInfo: {
         admin: 'admin / admin123',
         pengajar: 'pengajar / pengajar123',
-        students: students.map((s) => `${s.code} / ${s.pin}`),
+        students: students.map((s) => `${s.code} / ${s.password}`),
       },
     })
   } catch (error) {

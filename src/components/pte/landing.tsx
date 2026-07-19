@@ -66,7 +66,7 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
               </Button>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
-              Demo: siswa <code className="rounded bg-muted px-1.5 py-0.5">PTE001</code> · PIN <code className="rounded bg-muted px-1.5 py-0.5">0001</code>{' '}
+              Demo: siswa <code className="rounded bg-muted px-1.5 py-0.5">PTE001</code> · password <code className="rounded bg-muted px-1.5 py-0.5">sukseswhv2026</code>{' '}
               · pengajar <code className="rounded bg-muted px-1.5 py-0.5">pengajar</code> / <code className="rounded bg-muted px-1.5 py-0.5">pengajar123</code>
             </p>
           </div>
