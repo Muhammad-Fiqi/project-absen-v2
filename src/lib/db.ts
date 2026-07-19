@@ -7,12 +7,12 @@ import { adminUser, attendance, course, extensionRequest, quotaExtension, qrToke
 // For local dev we still use SQLite file via file:db/custom.db.
 
 function createDb() {
-  const dbUrl = process.env.DATABASE_URL || 'file:db/custom.db'
+  const dbUrl = process.env.DATABASE_TURSO_DATABASE_URL || 'file:db/custom.db'
 
   const libsqlClient: Client = createClient({
     url: dbUrl,
     authToken: dbUrl.startsWith('libsql:')
-      ? (process.env.DATABASE_AUTH_TOKEN || undefined)
+      ? (process.env.DATABASE_TURSO_AUTH_TOKEN || undefined)
       : undefined,
   })
 

@@ -13,11 +13,8 @@ export async function ensureDummyTables() {
   // Use raw SQL via drizzle's session.$client?.query if available, otherwise fallback to casting.
   const raw = db as any
   const client = raw?.session?.$client ?? raw?.$client ?? raw
-  if (!client || typeof client.query !== 'function') {
-    throw new Error('Drizzle client.query() not available for ensureDummyTables')
-  }
-  await client.query(`
 
+  const ddl = `
     CREATE TABLE IF NOT EXISTS "AdminUser" (
       "id" TEXT PRIMARY KEY,
       "username" TEXT NOT NULL UNIQUE,
@@ -121,6 +118,37 @@ export async function ensureDummyTables() {
       "reviewNote" TEXT,
       "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     );
-  `)
+  `
+
+  // NOTE: libsql execute() does NOT allow multi-statement SQL strings.
+  // Split the DDL into single statements and execute sequentially.
+  const statements = ddl
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => `${s};`)
+
+  if (!client) {
+    throw new Error('No raw client available for ensureDummyTables')
+  }
+
+  for (const stmt of statements) {
+    if (typeof client.query === 'function') {
+      await client.query(stmt)
+      continue
+    }
+
+    if (typeof client.execute === 'function') {
+      await client.execute({ sql: stmt })
+      continue
+    }
+
+    if (typeof client.batch === 'function') {
+      await client.batch([stmt])
+      continue
+    }
+
+    throw new Error('No compatible raw SQL executor found for ensureDummyTables (expected query/execute/batch)')
+  }
 }
 
