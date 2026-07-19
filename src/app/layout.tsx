@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PTE Attendance — Sistem Absensi Anti-Curang",
+  title: "Ruang PTE Attendance",
   description: "Aplikasi absensi PTE Academic dengan QR dinamis. Siswa scan QR untuk hadir, pengajar kelola sesi & pantau kehadiran real-time.",
-  keywords: ["PTE", "attendance", "absensi", "kursus", "QR"],
-  authors: [{ name: "PTE Course" }],
+  keywords: ["PTE", "attendance", "absensi", "kursus", "QR", "siswa", "pengajar", "admin", "ruang pte"],
+  authors: [{ name: "Ruang PTE" }],
 };
 
 export default function RootLayout({

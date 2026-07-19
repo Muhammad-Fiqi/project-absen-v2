@@ -146,7 +146,7 @@ export function TeacherDashboard() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-6">
+        <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-6 max-md:h-[100px]">
           <TabsTrigger value="sessions" className="gap-1.5"><Calendar className="h-3.5 w-3.5" /> Jadwal</TabsTrigger>
           <TabsTrigger value="qr" className="gap-1.5" disabled={!selectedSession}><QrCode className="h-3.5 w-3.5" /> QR Live</TabsTrigger>
           <TabsTrigger value="attendees" className="gap-1.5" disabled={!selectedSession}><Users className="h-3.5 w-3.5" /> Kehadiran</TabsTrigger>
