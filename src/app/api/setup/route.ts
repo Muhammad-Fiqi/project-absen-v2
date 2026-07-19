@@ -43,7 +43,7 @@ export async function POST() {
         code: 'PTE-2026-A',
         name: 'PTE Academic Preparation',
         description: 'Kelas persiapan PTE Academic',
-        defaultQuota: 15,
+        defaultQuota: 20,
         totalSessions: 20,
         graceMinutesBefore: 10,
         graceMinutesAfter: 20,
