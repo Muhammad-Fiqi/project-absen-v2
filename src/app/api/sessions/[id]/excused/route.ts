@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { session, attendance } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
+import { newId } from '@/lib/id'
 
 export const runtime = 'nodejs'
 
@@ -24,26 +27,21 @@ export async function POST(
   }
 
   // Find the session
-  const session = await db.session.findUnique({
-    where: { id: sessionId },
-    include: { course: true },
-  })
-  if (!session) {
+  const sessionRows = await db.select().from(session).where(eq(session.id, sessionId)).limit(1)
+  const sessionRow = sessionRows[0]
+  if (!sessionRow) {
     return NextResponse.json({ error: 'Sesi tidak ditemukan' }, { status: 404 })
   }
 
   // Find existing attendance for this student in this session
-  const existing = await db.attendance.findUnique({
-    where: {
-      sessionId_studentId: {
-        sessionId,
-        studentId,
-      },
-    },
-  })
+  const existingRows = await db
+    .select()
+    .from(attendance)
+    .where(and(eq(attendance.sessionId, sessionId), eq(attendance.studentId, studentId)))
+    .limit(1)
+  const existing = existingRows[0]
 
   if (existing) {
-    // Update existing attendance to excused
     if (existing.status === 'present' || existing.status === 'late') {
       return NextResponse.json(
         { error: 'Siswa sudah hadir di sesi ini, tidak bisa diizinkan' },
@@ -57,13 +55,14 @@ export async function POST(
       )
     }
 
-    const updated = await db.attendance.update({
-      where: { id: existing.id },
-      data: {
+    const [updated] = await db
+      .update(attendance)
+      .set({
         status: 'excused',
         notes: `Izin: ${note || 'Tidak ada keterangan'}`,
-      },
-    })
+      })
+      .where(eq(attendance.id, existing.id))
+      .returning()
 
     return NextResponse.json({
       id: updated.id,
@@ -72,24 +71,25 @@ export async function POST(
       status: updated.status,
       notes: updated.notes,
       checkInTime: updated.checkInTime,
-      verified: updated.verified,
+      verified: !!updated.verified,
     })
   } else {
     // Create new excused attendance
-    // Compute dayKey from session date
-    const d = session.date
+    const d = new Date(sessionRow.date)
     const dk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-    const created = await db.attendance.create({
-      data: {
+    const [created] = await db
+      .insert(attendance)
+      .values({
+        id: newId('a'),
         sessionId,
         studentId,
         status: 'excused',
         dayKey: dk,
         notes: `Izin: ${note || 'Tidak ada keterangan'}`,
-        verified: false, // excused does NOT consume quota
-      },
-    })
+        verified: 0, // excused does NOT consume quota
+      })
+      .returning()
 
     return NextResponse.json({
       id: created.id,
@@ -98,7 +98,7 @@ export async function POST(
       status: created.status,
       notes: created.notes,
       checkInTime: created.checkInTime,
-      verified: created.verified,
+      verified: !!created.verified,
     }, { status: 201 })
   }
 }

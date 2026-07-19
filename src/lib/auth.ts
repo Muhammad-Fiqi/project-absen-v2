@@ -2,12 +2,15 @@
 // Stored as base64 JSON. Suitable for cheap deployment (no external auth service).
 
 import { cookies } from 'next/headers'
+import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { adminUser, attendance, student } from '@/db/schema'
 import type { StudentInfo, TeacherInfo } from '@/lib/types'
 
 const STUDENT_COOKIE = 'pte_student'
 const TEACHER_COOKIE = 'pte_teacher'
 const SECRET = process.env.AUTH_SECRET || 'pte-attendance-auth-key-2024'
+
 
 function encode(obj: unknown): string {
   return Buffer.from(JSON.stringify(obj)).toString('base64')
@@ -49,13 +52,13 @@ export function buildTeacherCookie(teacher: TeacherInfo) {
 }
 
 // ── Apply session cookie to a NextResponse ──
-export function applyStudentCookie(res: NextResponse, student: StudentInfo) {
+export function applyStudentCookie(res: any, student: StudentInfo) {
   const c = buildStudentCookie(student)
   res.cookies.set(c.name, c.value, c)
   return res
 }
 
-export function applyTeacherCookie(res: NextResponse, teacher: TeacherInfo) {
+export function applyTeacherCookie(res: any, teacher: TeacherInfo) {
   const c = buildTeacherCookie(teacher)
   res.cookies.set(c.name, c.value, c)
   return res
@@ -86,23 +89,59 @@ export async function getTeacherSession(): Promise<TeacherInfo | null> {
 export async function getCurrentStudent(): Promise<StudentInfo | null> {
   const sess = await getStudentSession()
   if (!sess?.id) return null
-  const student = await db.student.findUnique({ where: { id: sess.id } })
-  if (!student) return null
+  const rows = await db
+    .select({
+      id: student.id,
+      studentCode: student.studentCode,
+      name: student.name,
+      email: student.email,
+      phone: student.phone,
+      courseCode: student.courseCode,
+      courseId: student.courseId,
+      sessionQuota: student.sessionQuota,
+      quotaExtendedAt: student.quotaExtendedAt,
+    })
+    .from(student)
+    .where(eq(student.id, sess.id))
+    .limit(1)
+
+  const s = rows[0]
+  if (!s) return null
+
+  // Compute usage to fill StudentInfo shape expected by frontend.
+  // Keep this lightweight; counts verified attendances.
+  const [usedRow] = await db
+    .select({ n: count() })
+    .from(attendance)
+    .where(eq(attendance.studentId, s.id))
+  const sessionsUsed = Number(usedRow?.n ?? 0)
+  const sessionsRemaining = Math.max(0, s.sessionQuota - sessionsUsed)
+
   return {
-    id: student.id,
-    studentCode: student.studentCode,
-    name: student.name,
-    email: student.email,
-    phone: student.phone,
-    courseCode: student.courseCode,
-    courseId: student.courseId,
+    id: s.id,
+    studentCode: s.studentCode,
+    name: s.name,
+    email: s.email,
+    phone: s.phone,
+    courseCode: s.courseCode,
+    courseId: s.courseId,
+    sessionQuota: s.sessionQuota,
+    sessionsUsed,
+    sessionsRemaining,
+    quotaExhausted: sessionsRemaining <= 0,
+    quotaExtendedAt: s.quotaExtendedAt,
   }
 }
 
 export async function getCurrentTeacher(): Promise<TeacherInfo | null> {
   const sess = await getTeacherSession()
   if (!sess?.id) return null
-  const teacher = await db.adminUser.findUnique({ where: { id: sess.id } })
+  const rows = await db
+    .select()
+    .from(adminUser)
+    .where(eq(adminUser.id, sess.id))
+
+  const teacher = rows[0] ?? null
   if (!teacher) return null
   return {
     id: teacher.id,

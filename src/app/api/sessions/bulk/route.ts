@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { eq, max } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { session, course } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 import { generateQrSecret } from '@/lib/security'
+import { newId } from '@/lib/id'
 
 export const runtime = 'nodejs'
 
@@ -48,8 +51,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate course exists
-    const course = await db.course.findUnique({ where: { id: courseId } })
-    if (!course) {
+    const courseRows = await db.select().from(course).where(eq(course.id, courseId)).limit(1)
+    const courseRow = courseRows[0]
+    if (!courseRow) {
       return NextResponse.json({ error: 'Kursus tidak ditemukan' }, { status: 404 })
     }
 
@@ -60,14 +64,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the next sessionNumber
-    const maxNum = await db.session.aggregate({
-      where: { courseId },
-      _max: { sessionNumber: true },
-    })
-    let nextNum = (maxNum._max.sessionNumber ?? 0) + 1
+    const maxRows = await db
+      .select({ m: max(session.sessionNumber) })
+      .from(session)
+      .where(eq(session.courseId, courseId))
+    let nextNum = (Number(maxRows[0]?.m ?? 0) || 0) + 1
 
-    // Create all sessions in a transaction
-    const createdSessions = []
+    const createdSessions: any[] = []
     const dayDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())
 
     for (const s of sessions) {
@@ -96,14 +99,16 @@ export async function POST(req: NextRequest) {
       const modeLabel = isOffline ? 'Offline' : 'Online'
       const platform = s.platform || (isOffline ? 'Office' : 'Google Meet')
 
-      const session = await db.session.create({
-        data: {
+      const [created] = await db
+        .insert(session)
+        .values({
+          id: newId('s'),
           courseId,
           sessionNumber: nextNum,
           title: `SESI ${nextNum} · ${modeLabel}`,
-          date: dayDate,
-          startTime: startDateTime,
-          endTime: endDateTime,
+          date: dayDate.toISOString(),
+          startTime: startDateTime.toISOString(),
+          endTime: endDateTime.toISOString(),
           mode: s.mode,
           platform,
           room: s.room || null,
@@ -114,11 +119,10 @@ export async function POST(req: NextRequest) {
           qrSecret: generateQrSecret(),
           notes: s.notes || null,
           createdById: teacher.id,
-        },
-        include: { course: true },
-      })
+        })
+        .returning()
 
-      createdSessions.push(session)
+      createdSessions.push({ ...created, course: courseRow })
       nextNum++
     }
 

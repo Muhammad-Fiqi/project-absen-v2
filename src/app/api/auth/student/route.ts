@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { student, course, attendance } from '@/db/schema'
 import { verifyPin } from '@/lib/security'
 import { applyStudentCookie } from '@/lib/auth'
 
@@ -12,39 +14,65 @@ export async function POST(req: NextRequest) {
     if (!studentCode || !pin) {
       return NextResponse.json({ error: 'Kode siswa dan PIN wajib diisi' }, { status: 400 })
     }
-    const student = await db.student.findUnique({
-      where: { studentCode: studentCode.trim().toUpperCase() },
-      include: { course: true },
-    })
-    if (!student) {
+
+    const rows = await db
+      .select()
+      .from(student)
+      .where(eq(student.studentCode, studentCode.trim().toUpperCase()))
+      .limit(1)
+    const studentRow = rows[0]
+    if (!studentRow) {
       return NextResponse.json({ error: 'Kode siswa tidak ditemukan' }, { status: 404 })
     }
-    if (!student.pinHash || !verifyPin(pin, student.pinHash)) {
+    if (!studentRow.pinHash || !verifyPin(pin, studentRow.pinHash)) {
       return NextResponse.json({ error: 'PIN salah' }, { status: 401 })
     }
 
+    // Look up course name if available
+    let courseName: string | null = null
+    if (studentRow.courseId) {
+      const courseRows = await db
+        .select({ name: course.name })
+        .from(course)
+        .where(eq(course.id, studentRow.courseId))
+        .limit(1)
+      courseName = courseRows[0]?.name ?? null
+    }
+
+    // Compute usage for StudentInfo
+    const [usedRow] = await db
+      .select({ n: count() })
+      .from(attendance)
+      .where(eq(attendance.studentId, studentRow.id))
+    const sessionsUsed = Number(usedRow?.n ?? 0)
+    const sessionsRemaining = Math.max(0, studentRow.sessionQuota - sessionsUsed)
+
     const studentInfo = {
-      id: student.id,
-      studentCode: student.studentCode,
-      name: student.name,
-      email: student.email,
-      phone: student.phone,
-      courseCode: student.courseCode,
-      courseId: student.courseId,
+      id: studentRow.id,
+      studentCode: studentRow.studentCode,
+      name: studentRow.name,
+      email: studentRow.email,
+      phone: studentRow.phone,
+      courseCode: studentRow.courseCode,
+      courseId: studentRow.courseId,
+      sessionQuota: studentRow.sessionQuota,
+      sessionsUsed,
+      sessionsRemaining,
+      quotaExhausted: sessionsRemaining <= 0,
+      quotaExtendedAt: studentRow.quotaExtendedAt,
     }
 
     const res = NextResponse.json({
       success: true,
       student: {
-        id: student.id,
-        studentCode: student.studentCode,
-        name: student.name,
-        courseCode: student.courseCode,
-        courseName: student.course?.name,
+        id: studentRow.id,
+        studentCode: studentRow.studentCode,
+        name: studentRow.name,
+        courseCode: studentRow.courseCode,
+        courseName,
       },
     })
 
-    // Set cookie directly on the response object
     return applyStudentCookie(res, studentInfo)
   } catch (e) {
     console.error('student login error', e)

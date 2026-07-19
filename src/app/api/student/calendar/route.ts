@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { and, eq, gte, lte, ne } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { student, course, session, attendance } from '@/db/schema'
 import { getCurrentStudent } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -32,7 +34,6 @@ function dayKey(d: Date): string {
 }
 
 function getDayOfWeekMondayBased(date: Date): number {
-  // JS getDay(): 0=Sun, 1=Mon... Convert to 0=Mon, 6=Sun
   const d = date.getDay()
   return d === 0 ? 6 : d - 1
 }
@@ -43,20 +44,22 @@ const MONTH_LABELS = [
 ]
 
 export async function GET() {
-  const student = await getCurrentStudent()
-  if (!student) {
+  const studentSess = await getCurrentStudent()
+  if (!studentSess) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const fullStudent = await db.student.findUnique({
-    where: { id: student.id },
-    include: { course: true },
-  })
-  if (!fullStudent?.course) {
+  const fullStudentRows = await db
+    .select()
+    .from(student)
+    .where(eq(student.id, studentSess.id))
+    .limit(1)
+  const fullStudent = fullStudentRows[0]
+  if (!fullStudent?.courseId) {
     return NextResponse.json({ error: 'Data tidak ditemukan' }, { status: 404 })
   }
 
-  const courseId = fullStudent.course.id
+  const courseId = fullStudent.courseId
   const now = new Date()
 
   // Calculate 3 month range: current month - 2 to current month
@@ -76,49 +79,43 @@ export async function GET() {
   // Date range for querying
   const startDate = new Date(months[0].year, months[0].month, 1)
   const endDate = new Date(months[months.length - 1].year, months[months.length - 1].month + 1, 0, 23, 59, 59, 999)
+  const startKey = dayKey(startDate)
+  const endKey = dayKey(endDate)
 
-  // Get all sessions in the range for this course
-  const sessions = await db.session.findMany({
-    where: {
-      courseId,
-      date: { gte: startDate, lte: endDate },
-      status: { not: 'cancelled' },
-    },
-    orderBy: { date: 'asc' },
+  // Get all sessions in the range for this course (exclude cancelled)
+  const allSessions = await db.select().from(session).where(eq(session.courseId, courseId))
+  const sessions = allSessions.filter((s) => {
+    if (s.status === 'cancelled') return false
+    const k = typeof s.date === 'string' ? s.date.slice(0, 10) : dayKey(new Date(s.date as any))
+    return k >= startKey && k <= endKey
   })
 
-  // Get all attendances for this student in the range
-  const attendances = await db.attendance.findMany({
-    where: {
-      studentId: student.id,
-      dayKey: { gte: dayKey(startDate), lte: dayKey(endDate) },
-    },
-  })
+  // Get all attendances for this student in the range (filter by dayKey string)
+  const allAttendances = await db
+    .select()
+    .from(attendance)
+    .where(eq(attendance.studentId, studentSess.id))
+  const atts = allAttendances.filter((a) => a.dayKey >= startKey && a.dayKey <= endKey)
 
   // Build maps
-  // dayKey -> list of sessions
   const sessionsByDay = new Map<string, typeof sessions>()
   for (const s of sessions) {
-    const k = dayKey(s.date)
+    const k = typeof s.date === 'string' ? s.date.slice(0, 10) : dayKey(new Date(s.date as any))
     if (!sessionsByDay.has(k)) sessionsByDay.set(k, [])
     sessionsByDay.get(k)!.push(s)
   }
 
-  // dayKey -> attendance (prefer verified, then latest)
-  const attendanceByDay = new Map<string, typeof attendances[number]>()
-  // Also track all attendances per day
-  const allAttendancesByDay = new Map<string, typeof attendances[number]>()
-  for (const a of attendances) {
+  // dayKey -> attendance (prefer verified/excused)
+  const attendanceByDay = new Map<string, (typeof atts)[number]>()
+  for (const a of atts) {
     const existing = attendanceByDay.get(a.dayKey)
     if (!existing) {
       attendanceByDay.set(a.dayKey, a)
     } else {
-      // Prefer verified or excused over unverified
       if ((a.verified || a.status === 'excused') && !existing.verified && existing.status !== 'excused') {
         attendanceByDay.set(a.dayKey, a)
       }
     }
-    allAttendancesByDay.set(a.dayKey, a)
   }
 
   // Build calendar months
@@ -126,7 +123,6 @@ export async function GET() {
     const daysInMonth = new Date(m.year, m.month + 1, 0).getDate()
     const firstDayOfWeek = getDayOfWeekMondayBased(new Date(m.year, m.month, 1))
 
-    // Add blank cells for days before the 1st
     for (let i = 0; i < firstDayOfWeek; i++) {
       m.days.push({
         day: 0,
@@ -156,14 +152,13 @@ export async function GET() {
           if (att.status === 'present') status = 'present'
           else if (att.status === 'late') status = 'late'
           else if (att.status === 'excused') status = 'excused'
-          else status = 'present' // any verified attendance shows as present
+          else status = 'present'
           note = att.notes || undefined
         } else if (isFuture) {
           status = 'future'
         } else {
           status = 'missed'
         }
-        // Use first session's info for display
         const firstSession = daySessions[0]
         sessionTitle = `${firstSession.title} · ${firstSession.mode === 'online' ? 'Online' : 'Offline'}`
         mode = firstSession.mode
@@ -182,7 +177,6 @@ export async function GET() {
     }
   }
 
-  // Stats
   const allDays: CalendarDay[] = months.flatMap((m) => m.days)
   const present = allDays.filter((d) => d.status === 'present').length
   const late = allDays.filter((d) => d.status === 'late').length

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { session } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -15,6 +17,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!['scheduled', 'active', 'completed', 'cancelled'].includes(status)) {
     return NextResponse.json({ error: 'Status tidak valid' }, { status: 400 })
   }
-  const session = await db.session.update({ where: { id }, data: { status } })
-  return NextResponse.json({ success: true, session })
+
+  const [updated] = await db
+    .update(session)
+    .set({ status })
+    .where(eq(session.id, id))
+    .returning()
+
+  if (!updated) {
+    return NextResponse.json({ error: 'Sesi tidak ditemukan' }, { status: 404 })
+  }
+  return NextResponse.json({ success: true, session: updated })
 }

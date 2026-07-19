@@ -20,9 +20,12 @@ node_modules
 # production
 /build
 
-# Prisma local database
+# Prisma local database (now libsql local dev)
 /db/*.db
 /db/*.db-journal
+
+# Generated client (legacy Prisma — prevent re-appearance)
+/src/generated/
 
 # local environment files
 .env*

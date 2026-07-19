@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { student, quotaExtension } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
+import { newId } from '@/lib/id'
 
 export const runtime = 'nodejs'
 
@@ -17,8 +20,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json()
   const { addedSessions, reason, setQuota } = body
 
-  const student = await db.student.findUnique({ where: { id } })
-  if (!student) {
+  const studentRows = await db.select().from(student).where(eq(student.id, id)).limit(1)
+  const studentRow = studentRows[0]
+  if (!studentRow) {
     return NextResponse.json({ error: 'Siswa tidak ditemukan' }, { status: 404 })
   }
 
@@ -26,42 +30,46 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (typeof setQuota === 'number' && setQuota > 0) {
     newQuota = Math.max(0, Math.min(100, Math.floor(setQuota)))
   } else if (typeof addedSessions === 'number' && addedSessions > 0) {
-    newQuota = student.sessionQuota + Math.floor(addedSessions)
+    newQuota = studentRow.sessionQuota + Math.floor(addedSessions)
   } else {
     return NextResponse.json({ error: 'Berikan addedSessions atau setQuota' }, { status: 400 })
   }
-  if (newQuota <= student.sessionQuota) {
+  if (newQuota <= studentRow.sessionQuota) {
     return NextResponse.json({ error: 'Kuota baru harus lebih besar dari kuota saat ini' }, { status: 400 })
   }
-  const added = newQuota - student.sessionQuota
+  const added = newQuota - studentRow.sessionQuota
 
   // Update student + create extension audit log in a transaction
-  const [updated] = await db.$transaction([
-    db.student.update({
-      where: { id },
-      data: {
+  const [updated] = await db.transaction(async (tx) => {
+    const [updatedStudent] = await tx
+      .update(student)
+      .set({
         sessionQuota: newQuota,
-        quotaExtendedAt: new Date(),
-        quotaNote: reason || student.quotaNote,
-      },
-    }),
-    db.quotaExtension.create({
-      data: {
-        studentId: id,
-        adminId: teacher.id,
-        oldQuota: student.sessionQuota,
-        newQuota,
-        addedSessions: added,
-        reason: reason || `Perpanjangan +${added} sesi`,
-      },
-    }),
-  ])
+        quotaExtendedAt: new Date().toISOString(),
+        quotaNote: reason || studentRow.quotaNote,
+      })
+      .where(eq(student.id, id))
+      .returning()
+
+    await tx.insert(quotaExtension).values({
+      id: newId('qe'),
+      studentId: id,
+      adminId: teacher.id,
+      oldQuota: studentRow.sessionQuota,
+      newQuota,
+      addedSessions: added,
+      reason: reason || `Perpanjangan +${added} sesi`,
+    })
+
+    return [updatedStudent]
+  })
+
   return NextResponse.json({
     success: true,
     student: {
       id: updated.id,
       sessionQuota: updated.sessionQuota,
-      quotaExtendedAt: updated.quotaExtendedAt?.toISOString(),
+      quotaExtendedAt: updated.quotaExtendedAt,
     },
     added,
   })

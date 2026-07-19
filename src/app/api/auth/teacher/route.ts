@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { adminUser } from '@/db/schema'
 import { verifyPin } from '@/lib/security'
 import { applyTeacherCookie } from '@/lib/auth'
 
@@ -12,7 +14,12 @@ export async function POST(req: NextRequest) {
     if (!username || !password) {
       return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 })
     }
-    const user = await db.adminUser.findUnique({ where: { username: username.trim().toLowerCase() } })
+    const rows = await db
+      .select()
+      .from(adminUser)
+      .where(eq(adminUser.username, username.trim().toLowerCase()))
+      .limit(1)
+    const user = rows[0]
     if (!user) {
       return NextResponse.json({ error: 'Username tidak ditemukan' }, { status: 404 })
     }

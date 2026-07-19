@@ -1,12 +1,12 @@
-import { PrismaClient } from '../generated/client/client'
-import { PrismaLibSql } from '@prisma/adapter-libsql'
+import { drizzle } from 'drizzle-orm/libsql'
 import { createClient, type Client } from '@libsql/client'
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
+import { adminUser, attendance, course, extensionRequest, quotaExtension, qrToken, session, student } from '@/db/schema'
 
-function createPrismaClient(): PrismaClient {
+// Drizzle expects libsql client for Turso/libsql URLs.
+// For local dev we still use SQLite file via file:db/custom.db.
+
+function createDb() {
   const dbUrl = process.env.DATABASE_URL || 'file:db/custom.db'
 
   const libsqlClient: Client = createClient({
@@ -15,11 +15,24 @@ function createPrismaClient(): PrismaClient {
       ? (process.env.DATABASE_AUTH_TOKEN || undefined)
       : undefined,
   })
-  const adapter = new PrismaLibSql(libsqlClient)
-  return new PrismaClient({ adapter })
+
+  const database = drizzle(libsqlClient, {
+    schema: {
+      adminUser,
+      course,
+      student,
+      session,
+      attendance,
+      qrToken,
+      quotaExtension,
+      extensionRequest,
+    },
+  })
+
+  return database
 }
 
-export const db =
-  globalForPrisma.prisma ?? createPrismaClient()
+const globalForDb = globalThis as unknown as { db: ReturnType<typeof createDb> | undefined }
+export const db = globalForDb.db ?? createDb()
+if (process.env.NODE_ENV !== 'production') globalForDb.db = db
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db

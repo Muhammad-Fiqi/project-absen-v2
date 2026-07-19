@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { and, count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { session, course, attendance, student } from '@/db/schema'
 import { getCurrentStudent } from '@/lib/auth'
 import { verifyQrPayload, verifyRotatingCode } from '@/lib/security'
 import type { AttendanceSubmitRequest, AttendanceSubmitResponse } from '@/lib/types'
+import { newId } from '@/lib/id'
 
 export const runtime = 'nodejs'
 
@@ -15,31 +18,52 @@ function dayKey(d: Date): string {
 
 // POST /api/sessions/[id]/attendance — submit QR-only attendance
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const student = await getCurrentStudent()
-  if (!student) {
+  const studentSess = await getCurrentStudent()
+  if (!studentSess) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const { id: sessionId } = await params
   const body = (await req.json()) as AttendanceSubmitRequest
 
-  const session = await db.session.findUnique({
-    where: { id: sessionId },
-    include: { course: true },
-  })
-  if (!session) {
+  // Look up session + course
+  const sessionRows = await db
+    .select()
+    .from(session)
+    .where(eq(session.id, sessionId))
+    .limit(1)
+  const sessionRow = sessionRows[0]
+  if (!sessionRow) {
     return NextResponse.json({ error: 'Sesi tidak ditemukan' }, { status: 404 })
   }
 
+  const courseRows = await db
+    .select()
+    .from(course)
+    .where(eq(course.id, sessionRow.courseId))
+    .limit(1)
+  const courseRow = courseRows[0]
+  if (!courseRow) {
+    return NextResponse.json({ error: 'Kursus tidak ditemukan' }, { status: 404 })
+  }
+
   // Full student (for quota)
-  const fullStudent = await db.student.findUnique({ where: { id: student.id } })
+  const studentRows = await db
+    .select()
+    .from(student)
+    .where(eq(student.id, studentSess.id))
+    .limit(1)
+  const fullStudent = studentRows[0]
   if (!fullStudent) {
     return NextResponse.json({ error: 'Siswa tidak ditemukan' }, { status: 404 })
   }
 
   // Check existing attendance for THIS session (prevent double submission)
-  const existing = await db.attendance.findUnique({
-    where: { sessionId_studentId: { sessionId, studentId: student.id } },
-  })
+  const existingRows = await db
+    .select()
+    .from(attendance)
+    .where(and(eq(attendance.sessionId, sessionId), eq(attendance.studentId, studentSess.id)))
+    .limit(1)
+  const existing = existingRows[0]
   if (existing) {
     return NextResponse.json(
       {
@@ -56,9 +80,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const checks: AttendanceSubmitResponse['checks'] = {}
 
   // === QUOTA CHECK ===
-  const verifiedCount = await db.attendance.count({
-    where: { studentId: student.id, verified: true },
-  })
+  const [usedCountRow] = await db
+    .select({ n: count() })
+    .from(attendance)
+    .where(and(eq(attendance.studentId, studentSess.id), eq(attendance.verified, 1)))
+  const verifiedCount = Number(usedCountRow?.n ?? 0)
   const remaining = Math.max(0, fullStudent.sessionQuota - verifiedCount)
   const quotaOk = remaining > 0
   checks.quota = {
@@ -79,15 +105,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // === ONE-SESSION-PER-DAY CHECK ===
-  const dk = dayKey(session.date)
-  const todayAttendance = await db.attendance.findFirst({
-    where: { studentId: student.id, dayKey: dk, verified: true },
-    include: { session: true },
-  })
+  const sessionDate = new Date(sessionRow.date)
+  const dk = dayKey(sessionDate)
+  const todayAttendanceRows = await db
+    .select()
+    .from(attendance)
+    .where(
+      and(
+        eq(attendance.studentId, studentSess.id),
+        eq(attendance.dayKey, dk),
+        eq(attendance.verified, 1)
+      )
+    )
+    .limit(1)
+  const todayAttendance = todayAttendanceRows[0]
   if (todayAttendance) {
+    // Look up that session for display
+    const otherSessionRows = await db
+      .select()
+      .from(session)
+      .where(eq(session.id, todayAttendance.sessionId))
+      .limit(1)
+    const otherSession = otherSessionRows[0]
     checks.daily = {
       passed: false,
-      reason: `Anda sudah absen sesi lain hari ini (${new Date(todayAttendance.session.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} · ${todayAttendance.session.mode === 'online' ? todayAttendance.session.platform : 'Offline'}). Materi sama setiap sesi — cukup 1 sesi/hari.`,
+      reason: `Anda sudah absen sesi lain hari ini (${otherSession ? new Date(otherSession.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''} · ${otherSession && otherSession.mode === 'online' ? otherSession.platform : 'Offline'}). Materi sama setiap sesi — cukup 1 sesi/hari.`,
       attendedSession: todayAttendance.sessionId,
     }
     const response: AttendanceSubmitResponse = {
@@ -104,40 +146,44 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // === TIME WINDOW CHECK ===
-  const opensAt = new Date(session.startTime.getTime() - session.course.graceMinutesBefore * 60 * 1000)
-  const closesAt = new Date(session.endTime.getTime() + session.course.graceMinutesAfter * 60 * 1000)
+  const startTime = new Date(sessionRow.startTime)
+  const endTime = new Date(sessionRow.endTime)
+  const opensAt = new Date(startTime.getTime() - courseRow.graceMinutesBefore * 60 * 1000)
+  const closesAt = new Date(endTime.getTime() + courseRow.graceMinutesAfter * 60 * 1000)
   const inTimeWindow = now.getTime() >= opensAt.getTime() && now.getTime() <= closesAt.getTime()
-  const timeOpen = session.status === 'active' ? true : inTimeWindow
+  const timeOpen = sessionRow.status === 'active' ? true : inTimeWindow
   let isLate = false
   if (!timeOpen) {
     checks.time = { passed: false, reason: now.getTime() < opensAt.getTime() ? 'Absensi belum dibuka' : 'Absensi sudah ditutup' }
   } else {
-    isLate = now.getTime() > session.startTime.getTime() + 5 * 60 * 1000
+    isLate = now.getTime() > startTime.getTime() + 5 * 60 * 1000
     checks.time = { passed: true }
   }
 
   // === CAPACITY CHECK ===
-  const currentAttendeeCount = await db.attendance.count({
-    where: { sessionId, verified: true },
-  })
-  const capacityOk = currentAttendeeCount < session.maxAttendees
+  const [capRow] = await db
+    .select({ n: count() })
+    .from(attendance)
+    .where(and(eq(attendance.sessionId, sessionId), eq(attendance.verified, 1)))
+  const currentAttendeeCount = Number(capRow?.n ?? 0)
+  const capacityOk = currentAttendeeCount < sessionRow.maxAttendees
   checks.capacity = {
     passed: capacityOk,
-    reason: capacityOk ? undefined : `Kapasitas sesi penuh (${currentAttendeeCount}/${session.maxAttendees})`,
+    reason: capacityOk ? undefined : `Kapasitas sesi penuh (${currentAttendeeCount}/${sessionRow.maxAttendees})`,
   }
 
   // === QR OR CODE CHECK ===
   let qrValid = false
   let verifyMethod = 'none'
-  if (body.qr && session.qrSecret) {
+  if (body.qr && sessionRow.qrSecret) {
     // Method 1: QR scan
-    const v = verifyQrPayload(body.qr, session.qrSecret, now)
+    const v = verifyQrPayload(body.qr, sessionRow.qrSecret, now)
     checks.qr = { passed: v.valid, reason: v.reason }
     qrValid = v.valid
     verifyMethod = 'qr'
-  } else if (body.code && session.qrSecret) {
+  } else if (body.code && sessionRow.qrSecret) {
     // Method 2: Manual 6-digit code
-    const v = verifyRotatingCode(body.code, sessionId, session.qrSecret, now)
+    const v = verifyRotatingCode(body.code, sessionId, sessionRow.qrSecret, now)
     checks.code = { passed: v.valid, reason: v.reason }
     qrValid = v.valid
     verifyMethod = 'code'
@@ -149,18 +195,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const verified = qrValid && timeOpen && quotaOk && checks.daily.passed && capacityOk
   const status = !timeOpen ? 'absent' : isLate ? 'late' : 'present'
 
-  const attendance = await db.attendance.create({
-    data: {
+  const [created] = await db
+    .insert(attendance)
+    .values({
+      id: newId('a'),
       sessionId,
-      studentId: student.id,
+      studentId: studentSess.id,
       status: verified ? status : 'absent',
-      checkInTime: now,
+      checkInTime: now.toISOString(),
       dayKey: dk,
-      qrVerified: qrValid,
-      verified,
+      qrVerified: qrValid ? 1 : 0,
+      verified: verified ? 1 : 0,
       notes: !verified ? `${verifyMethod === 'code' ? 'Kode' : 'QR'} verification failed or checks not passed` : null,
-    },
-  })
+    })
+    .returning()
 
   const newRemaining = verified ? remaining - 1 : remaining
   const response: AttendanceSubmitResponse = {

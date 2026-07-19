@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { eq, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { session, course, student, attendance } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -11,19 +13,29 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const { id } = await params
-  const session = await db.session.findUnique({
-    where: { id },
-    include: { course: true },
-  })
-  if (!session) {
+
+  const sessionRows = await db.select().from(session).where(eq(session.id, id)).limit(1)
+  const sessionRow = sessionRows[0]
+  if (!sessionRow) {
     return NextResponse.json({ error: 'Sesi tidak ditemukan' }, { status: 404 })
   }
-  const students = await db.student.findMany({
-    where: { OR: [{ courseId: session.courseId }, { courseCode: session.course.code }] },
-    orderBy: { studentCode: 'asc' },
-  })
-  const attendances = await db.attendance.findMany({ where: { sessionId: id } })
+
+  const courseRows = await db.select().from(course).where(eq(course.id, sessionRow.courseId)).limit(1)
+  const courseRow = courseRows[0]
+
+  // Students matching course by id OR course code
+  const conditions = []
+  if (sessionRow.courseId) conditions.push(eq(student.courseId, sessionRow.courseId))
+  if (courseRow?.code) conditions.push(eq(student.courseCode, courseRow.code))
+  const students = await db
+    .select()
+    .from(student)
+    .where(conditions.length > 0 ? or(...conditions) : undefined)
+    .orderBy(student.studentCode)
+
+  const attendances = await db.select().from(attendance).where(eq(attendance.sessionId, id))
   const attMap = new Map(attendances.map((a) => [a.studentId, a]))
+
   const attendees = students.map((s) => {
     const a = attMap.get(s.id)
     return {
@@ -36,13 +48,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         ? {
             id: a.id,
             status: a.status,
-            checkInTime: a.checkInTime.toISOString(),
-            verified: a.verified,
-            qrVerified: a.qrVerified,
+            checkInTime: a.checkInTime,
+            verified: !!a.verified,
+            qrVerified: !!a.qrVerified,
             notes: a.notes,
           }
         : null,
     }
   })
-  return NextResponse.json({ session, attendees })
+
+  return NextResponse.json({
+    session: { ...sessionRow, course: courseRow ?? null },
+    attendees,
+  })
 }
