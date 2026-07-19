@@ -10,47 +10,73 @@ node_modules
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# Bun
+.bun
 
-# next.js
+# Next.js
 /.next/
 /out/
 
 # production
 /build
 
-# misc
-.DS_Store
-*.pem
+# Prisma local database
+/db/*.db
+/db/*.db-journal
 
-# debug
+# local environment files
+.env*
+
+# Vercel
+.vercel
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# editor/IDE
+.vscode/
+.idea/
+
+# logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-local-*
-.claude
-.z-ai-config
-*.log
+bun-debug.log*
+server.log
 dev.log
 dev.out.log
-test
-prompt
 
-server.log
-# Skills directory
+# temporary files
+*.pem
+*.swp
+*.swo
+*.tmp
+*.temp
+
+# OS
+.DS_Store
+
+# generated files
+*.tsbuildinfo
+next-env.d.ts
+
+# local/preview artifacts
+local-*
+.prompt
+.claude
+.z-ai-config
+.prompt
+
+# local workspace artifacts
+.zscripts/
+tool-results/
+upload/
+
+# Skills directory (local agent/workflow files)
 /skills/
 
 skills.md
