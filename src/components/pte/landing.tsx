@@ -41,7 +41,7 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
               </span>
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              Aplikasi absensi untuk kursus PTE yang adil, transparan, dan sulit dimanipulasi.
+              Aplikasi absensi untuk Student Ruang PTE yang adil dan transparan, untuk menjaga efektivitas pembelajaran.
               Banyak sesi per hari (offline & online) dengan materi sama — siswa bebas pilih sesi.
               Kuota personal 10–20 sesi, verifikasi QR dinamis & jendela waktu.
             </p>
@@ -61,14 +61,10 @@ export function Landing({ onSelectStudent, onSelectTeacher }: LandingProps) {
                 className="w-full gap-2 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-md sm:w-auto"
                 onClick={onSelectTeacher}
               >
-                <ShieldCheck className="h-5 w-5" />
+                <ShieldCheck className="h-5 w-5" /> 
                 Masuk sebagai Pengajar
               </Button>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">
-              Demo: siswa <code className="rounded bg-muted px-1.5 py-0.5">PTE001</code> · password <code className="rounded bg-muted px-1.5 py-0.5">sukseswhv2026</code>{' '}
-              · pengajar <code className="rounded bg-muted px-1.5 py-0.5">pengajar</code> / <code className="rounded bg-muted px-1.5 py-0.5">pengajar123</code>
-            </p>
           </div>
         </div>
       </section>

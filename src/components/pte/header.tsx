@@ -31,14 +31,14 @@ export function Header({ role, user, onLogout }: HeaderProps) {
           <div className="leading-tight">
             <div className="flex items-center gap-2">
               <span className="bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-base font-bold tracking-tight text-transparent">
-                PTE Attendance
+                Ruang PTE Attendance
               </span>
               <Badge variant="secondary" className="hidden h-5 px-1.5 text-[10px] font-medium sm:inline-flex">
                 <ShieldCheck className="mr-1 h-3 w-3" /> Anti-Curang
               </Badge>
             </div>
             <p className="hidden text-xs text-muted-foreground sm:block">
-              Sistem Absensi PTE Academic
+              Sistem Absensi official Ruang PTE
             </p>
           </div>
         </div>
