@@ -16,9 +16,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Ruang PTE Attendance",
-  description: "Aplikasi absensi PTE Academic dengan QR dinamis. Siswa scan QR untuk hadir, pengajar kelola sesi & pantau kehadiran real-time.",
+  description: "Aplikasi absensi Ruang PTE",
   keywords: ["PTE", "attendance", "absensi", "kursus", "QR", "siswa", "pengajar", "admin", "ruang pte"],
   authors: [{ name: "Ruang PTE" }],
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({
