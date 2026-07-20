@@ -87,9 +87,6 @@ export function TeacherLogin({ onBack, onSuccess }: TeacherLoginProps) {
                   required
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                Demo: pengajar / pengajar123 · admin / admin123
-              </p>
             </div>
             <Button type="submit" className="w-full gap-2" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}

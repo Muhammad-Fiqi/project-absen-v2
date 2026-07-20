@@ -88,7 +88,7 @@ export function StudentLogin({ onBack, onSuccess }: StudentLoginProps) {
                 />
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Demo: gunakan password default <code className="rounded bg-muted px-1.5 py-0.5">sukseswhv2026</code>
+                gunakan password default <code className="rounded bg-muted px-1.5 py-0.5">sukseswhv2026</code>
               </p>
             </div>
             <Button type="submit" className="w-full gap-2" disabled={loading}>
