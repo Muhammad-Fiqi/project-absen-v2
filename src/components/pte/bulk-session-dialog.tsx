@@ -45,10 +45,11 @@ function generateId() {
 
 const SPREADSHEET_TEMPLATE = {
   offline: [
+    { startTime: '08:30', endTime: '10:00', teacher: 'Mr Dimas', platform: 'Office', room: 'Office' },
     { startTime: '10:00', endTime: '11:30', teacher: 'Mr Dimas', platform: 'Office', room: 'Office' },
     { startTime: '11:30', endTime: '13:00', teacher: 'Mr Dimas', platform: 'Office', room: 'Office' },
-    { startTime: '13:00', endTime: '14:30', teacher: 'Mr Dimas', platform: 'Office', room: 'Office' },
-    { startTime: '14:30', endTime: '16:00', teacher: 'Mr Dimas', platform: 'Office', room: 'Office' },
+    { startTime: '13:00', endTime: '14:30', teacher: 'Mr Faisal', platform: 'Office', room: 'Office' },
+    { startTime: '14:30', endTime: '16:00', teacher: 'Mr Faisal', platform: 'Office', room: 'Office' },
   ] as const,
   online: [
     { startTime: '05:00', endTime: '06:00', teacher: 'Mr Dimas', platform: 'Google Meet', room: '' },

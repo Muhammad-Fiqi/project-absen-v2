@@ -82,5 +82,8 @@ upload/
 # Skills directory (local agent/workflow files)
 /skills/
 
+#additional files to ignore
 skills.md
 TODO.md
+laporan-absensi-PTE-2026-A.csv
+Student.csv
