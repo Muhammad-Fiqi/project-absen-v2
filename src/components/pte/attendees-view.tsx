@@ -1,7 +1,18 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, CheckCircle2, Clock, XCircle, QrCode, Search, Users, ShieldCheck } from 'lucide-react'
+import {
+  Loader2,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  QrCode,
+  Search,
+  Users,
+  ShieldCheck,
+  MoveDown,
+  X,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -16,7 +27,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { apiGet, apiPost } from '@/lib/api-client'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { apiGet, apiPost, apiDelete } from '@/lib/api-client'
 import { toast } from 'sonner'
 import type { AttendanceStatus } from '@/lib/types'
 
@@ -34,6 +52,16 @@ interface Attendee {
     verified: boolean
     notes: string | null
   } | null
+}
+
+interface SessionOption {
+  id: string
+  title: string
+  sessionNumber: number
+  date: string
+  startTime: string
+  endTime: string
+  status: string
 }
 
 interface AttendeesViewProps {
@@ -60,6 +88,18 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
   const [izinNote, setIzinNote] = useState('')
   const [izinSubmitting, setIzinSubmitting] = useState(false)
 
+  // Move student dialog state
+  const [moveOpen, setMoveOpen] = useState(false)
+  const [moveStudent, setMoveStudent] = useState<Attendee | null>(null)
+  const [targetSessions, setTargetSessions] = useState<SessionOption[]>([])
+  const [selectedTargetSession, setSelectedTargetSession] = useState<string | null>(null)
+  const [moveSubmitting, setMoveSubmitting] = useState(false)
+
+  // Kick student confirmation state
+  const [kickOpen, setKickOpen] = useState(false)
+  const [kickStudent, setKickStudent] = useState<Attendee | null>(null)
+  const [kickSubmitting, setKickSubmitting] = useState(false)
+
   const loadAttendees = useCallback(() => {
     let active = true
     setLoading(true)
@@ -68,6 +108,29 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
       .catch(() => {})
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
+  }, [sessionId])
+
+  const loadTargetSessions = useCallback(async () => {
+    try {
+      // Fetch all sessions to populate the dropdown (excluding current session)
+      const res = await apiGet<{ sessions: any[]; days: any[] }>('/api/sessions')
+      // Filter out the current session and only show scheduled/active sessions
+      const filtered = res.sessions
+        .filter((s: any) => s.id !== sessionId && (s.status === 'scheduled' || s.status === 'active'))
+        .map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          sessionNumber: s.sessionNumber,
+          date: s.date,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          status: s.status
+        }))
+      setTargetSessions(filtered)
+    } catch (error) {
+      console.error('Failed to load sessions:', error)
+      toast.error('Gagal memuat daftar sesi')
+    }
   }, [sessionId])
 
   useEffect(() => {
@@ -100,6 +163,58 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
       toast.error(e.body?.error || 'Gagal mengizinkan siswa')
     } finally {
       setIzinSubmitting(false)
+    }
+  }
+
+  function openMoveDialog(student: Attendee) {
+    setMoveStudent(student)
+    setSelectedTargetSession(null)
+    loadTargetSessions()
+    setMoveOpen(true)
+  }
+
+  async function handleMoveStudent() {
+    if (!moveStudent || !selectedTargetSession) return
+    setMoveSubmitting(true)
+    try {
+      await apiPost(`/api/sessions/${sessionId}/attendance-mgmt/move`, {
+        targetSessionId: selectedTargetSession,
+        studentId: moveStudent.studentId
+      })
+      toast.success(`${moveStudent.name} telah dipindahkan ke sesi lain`)
+      setMoveOpen(false)
+      setMoveStudent(null)
+      setSelectedTargetSession(null)
+      // Refresh attendees
+      loadAttendees()
+    } catch (err: unknown) {
+      const e = err as { body?: { error?: string } }
+      toast.error(e.body?.error || 'Gagal memindahkan siswa')
+    } finally {
+      setMoveSubmitting(false)
+    }
+  }
+
+  function openKickDialog(student: Attendee) {
+    setKickStudent(student)
+    setKickOpen(true)
+  }
+
+  async function handleKickStudent() {
+    if (!kickStudent) return
+    setKickSubmitting(true)
+    try {
+      await apiDelete(`/api/sessions/${sessionId}/attendance-mgmt/remove?studentId=${kickStudent.studentId}`)
+      toast.success(`${kickStudent.name} telah dikeluarkan dari sesi`)
+      setKickOpen(false)
+      setKickStudent(null)
+      // Refresh attendees
+      loadAttendees()
+    } catch (err: unknown) {
+      const e = err as { body?: { error?: string } }
+      toast.error(e.body?.error || 'Gagal mengeluarkan siswa')
+    } finally {
+      setKickSubmitting(false)
     }
   }
 
@@ -151,7 +266,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="max-h-[28rem] divide-y divide-border/40 overflow-y-auto scrollbar-thin">
+          <div className="max-h-112 divide-y divide-border/40 overflow-y-auto scrollbar-thin">
             {filtered.map((a) => {
               const status = a.attendance?.status || 'absent'
               const st = STATUS_STYLE[status] || STATUS_STYLE.absent
@@ -179,18 +294,46 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                       )}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {canMarkIzin && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 gap-1 border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:bg-purple-950/30 dark:text-purple-300 dark:hover:bg-purple-950/50"
-                        onClick={() => openIzinDialog(a)}
-                      >
-                        <ShieldCheck className="h-3 w-3" />
-                        <span className="hidden sm:inline">Izin</span>
-                      </Button>
-                    )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {/* Action buttons */}
+                    <div className="flex gap-1">
+                      {/* Move to another session */}
+                      {a.attendance && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1 border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          onClick={() => openMoveDialog(a)}
+                        >
+                          <MoveDown className="h-3 w-3" />
+                          <span className="hidden sm:inline">Pindah</span>
+                        </Button>
+                      )}
+                      {/* Kick from session */}
+                      {a.attendance && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1 border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                          onClick={() => openKickDialog(a)}
+                        >
+                          <X className="h-3 w-3" />
+                          <span className="hidden sm:inline">Keluarkan</span>
+                        </Button>
+                      )}
+                      {/* Izin button */}
+                      {canMarkIzin && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1 border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:bg-purple-950/30 dark:text-purple-300 dark:hover:bg-purple-950/50"
+                          onClick={() => openIzinDialog(a)}
+                        >
+                          <ShieldCheck className="h-3 w-3" />
+                          <span className="hidden sm:inline">Izin</span>
+                        </Button>
+                      )}
+                    </div>
                     <Badge variant="outline" className={`gap-1 border ${st.cls}`}>
                       <Icon className="h-3 w-3" />
                       {st.label}
@@ -254,7 +397,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                 placeholder="Ketik alasan izin (opsional)..."
                 value={izinNote}
                 onChange={(e) => setIzinNote(e.target.value)}
-                className="min-h-[60px] resize-none"
+                className="min-h-15 resize-none"
               />
             </div>
           </div>
@@ -274,6 +417,132 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                 <ShieldCheck className="h-4 w-4" />
               )}
               Izinkan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move Student Dialog */}
+      <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl border-border/60">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MoveDown className="h-5 w-5 text-blue-600" />
+              Pindahkan Siswa
+            </DialogTitle>
+            <DialogDescription>
+              Pindahkan {moveStudent?.name} ke sesi berikutnya:
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
+                  {moveStudent?.studentCode.slice(-3)}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">{moveStudent?.name}</div>
+                  <div className="text-xs text-muted-foreground">{moveStudent?.studentCode}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">Sesi Tujuan</Label>
+              <Select value={selectedTargetSession ?? ''} onValueChange={setSelectedTargetSession}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Pilih sesi tujuan..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {targetSessions.length > 0 ? (
+                    <>
+                      <SelectItem value="placeholder" disabled>
+                        Pilih sesi tujuan...
+                      </SelectItem>
+                      {targetSessions.map((session) => (
+                        <SelectItem key={session.id} value={session.id}>
+                          Sesi {session.sessionNumber}: {session.title} ({new Date(session.date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })})
+                        </SelectItem>
+                      ))}
+                    </>
+                  ) : (
+                    <SelectItem value="empty" disabled>
+                      Tidak ada sesi lain yang tersedia
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              {targetSessions.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Tidak ada sesi lain yang tersedia untuk pemindahan.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-end pt-4">
+            <Button variant="outline" onClick={() => setMoveOpen(false)} disabled={moveSubmitting}>
+              Batal
+            </Button>
+            <Button
+              onClick={handleMoveStudent}
+              disabled={moveSubmitting || !selectedTargetSession}
+              className="ml-2 gap-1.5 bg-blue-600 hover:bg-blue-700"
+            >
+              {moveSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MoveDown className="h-4 w-4" />
+              )}
+              Pindahkan Siswa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Kick Student Confirmation Dialog */}
+      <Dialog open={kickOpen} onOpenChange={setKickOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl border-border/60">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <X className="h-5 w-5 text-red-600" />
+              Keluarkan Siswa
+            </DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin mengeluarkan {kickStudent?.name} dari sesi ini?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
+                  {kickStudent?.studentCode.slice(-3)}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">{kickStudent?.name}</div>
+                  <div className="text-xs text-muted-foreground">{kickStudent?.studentCode}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-end pt-4">
+            <Button variant="outline" onClick={() => setKickOpen(false)} disabled={kickSubmitting}>
+              Batal
+            </Button>
+            <Button
+              onClick={handleKickStudent}
+              disabled={kickSubmitting}
+              className="ml-2 bg-red-600 hover:bg-red-700"
+            >
+              {kickSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <X className="h-4 w-4" />
+              )}
+              Keluarkan
             </Button>
           </DialogFooter>
         </DialogContent>
