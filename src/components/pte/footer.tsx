@@ -16,7 +16,7 @@ export function Footer() {
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <span>Dibuat dengan</span>
             <Heart className="h-3 w-3 fill-primary text-primary" />
-            <span>untuk kursus PTE · © {new Date().getFullYear()}</span>
+            <span>dari Ruang PTE untuk student PTE· © {new Date().getFullYear()}</span>
           </div>
         </div>
       </div>
