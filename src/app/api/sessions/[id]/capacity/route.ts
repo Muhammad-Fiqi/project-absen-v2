@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { session, course, attendance } from '@/db/schema'
+import { session, course, attendance, student } from '@/db/schema'
 import { getCurrentStudent } from '@/lib/auth'
 
 export const runtime = 'nodejs'

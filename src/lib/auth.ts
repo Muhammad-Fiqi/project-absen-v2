@@ -2,6 +2,7 @@
 // Stored as base64 JSON. Suitable for cheap deployment (no external auth service).
 
 import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
 import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { adminUser, attendance, student } from '@/db/schema'

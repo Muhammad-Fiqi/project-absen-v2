@@ -7,7 +7,6 @@ import {
   Clock,
   TrendingUp,
   Target,
-  QrCode,
   Loader2,
   RefreshCw,
   GraduationCap,
@@ -511,7 +510,7 @@ function DayGroupCard({
                 </div>
                 {canCheckIn ? (
                   <Button size="sm" onClick={() => onCheckIn(s)} className="shrink-0 gap-1">
-                    <QrCode className="h-3.5 w-3.5" /> Absen
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Absen
                   </Button>
                 ) : attendedSession?.id === s.id ? (
                   <Badge variant="default" className="shrink-0 gap-1">

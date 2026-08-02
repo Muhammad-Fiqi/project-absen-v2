@@ -28,14 +28,17 @@ const TEACHER_OPTIONS = ['Mr Dimas', 'Mr Faisal']
 const ONLINE_PLATFORMS = ['Google Meet', 'Discord', 'Zoom']
 
 function makeRow(overrides?: Partial<SessionRow>, id?: string): SessionRow {
+  const rowId = overrides?.id || id || crypto.randomUUID()
+  const cleanOverrides = { ...overrides }
+  delete cleanOverrides.id
   return {
-    id: id || crypto.randomUUID(),
+    id: rowId,
     startTime: '10:00',
     endTime: '11:30',
     teacher: 'Mr Dimas',
     platform: 'Google Meet',
     room: 'Office',
-    ...overrides,
+    ...cleanOverrides,
   }
 }
 
@@ -106,12 +109,8 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
   }, [open, date])
 
   function applyTemplate() {
-    setOfflineRows(SPREADSHEET_TEMPLATE.offline.map((r) =>
-      makeRow({ ...r, mode: undefined, id: undefined })
-    ))
-    setOnlineRows(SPREADSHEET_TEMPLATE.online.map((r) =>
-      makeRow({ ...r, mode: undefined, id: undefined })
-    ))
+    setOfflineRows(SPREADSHEET_TEMPLATE.offline.map((r) => makeRow(r)))
+    setOnlineRows(SPREADSHEET_TEMPLATE.online.map((r) => makeRow(r)))
     toast.success('Template spreadsheet diterapkan')
   }
 
@@ -170,14 +169,18 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
         date,
         topicOfDay: topicOfDay || undefined,
         maxAttendees,
-        sessions: allRows.map((r) => ({
-          startTime: r.startTime,
-          endTime: r.endTime,
-          mode: r.mode,
-          platform: r.platform || undefined,
-          room: r.room || undefined,
-          teacher: r.teacher || undefined,
-        })),
+        sessions: allRows.map((r) => {
+          const start = new Date(`${date}T${r.startTime}`)
+          const end = new Date(`${date}T${r.endTime}`)
+          return {
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+            mode: r.mode,
+            platform: r.platform || undefined,
+            room: r.room || undefined,
+            teacher: r.teacher || undefined,
+          }
+        }),
       })
       toast.success(`${totalCount} sesi berhasil dibuat!`)
       onOpenChange(false)

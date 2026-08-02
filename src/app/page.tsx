@@ -9,11 +9,19 @@ import { StudentLogin } from '@/components/pte/student-login'
 import { TeacherLogin } from '@/components/pte/teacher-login'
 import { StudentDashboard } from '@/components/pte/student-dashboard'
 import { TeacherDashboard } from '@/components/pte/teacher-dashboard'
+import { AdminDashboard } from '@/components/pte/admin-dashboard'
 import { apiGet, apiPost } from '@/lib/api-client'
 import type { StudentDashboard as StudentDashboardData } from '@/lib/types'
 import { toast } from 'sonner'
 
-type View = 'loading' | 'landing' | 'student-login' | 'teacher-login' | 'student-home' | 'teacher-home'
+type View =
+  | 'loading'
+  | 'landing'
+  | 'student-login'
+  | 'teacher-login'
+  | 'student-home'
+  | 'teacher-home'
+  | 'admin-home'
 
 interface StudentInfo {
   id: string
@@ -49,7 +57,8 @@ export default function Home() {
       const res = await apiGet<MeResponse>('/api/me')
       setMe(res)
       if (res.role === 'student') setView('student-home')
-      else if (res.role === 'teacher' || res.role === 'admin') setView('teacher-home')
+      else if (res.role === 'admin') setView('admin-home')
+      else if (res.role === 'teacher') setView('teacher-home')
       else setView('landing')
     } catch {
       setView('landing')
@@ -64,13 +73,16 @@ export default function Home() {
         if (cancelled) return
         setMe(res)
         if (res.role === 'student') setView('student-home')
-        else if (res.role === 'teacher' || res.role === 'admin') setView('teacher-home')
+        else if (res.role === 'admin') setView('admin-home')
+        else if (res.role === 'teacher') setView('teacher-home')
         else setView('landing')
       })
       .catch(() => {
         if (!cancelled) setView('landing')
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Load student dashboard data when entering student home
@@ -98,7 +110,7 @@ export default function Home() {
     }
   }
 
-  // Student login success: use the response data directly
+  // Student login success
   function handleStudentLoginSuccess(student?: StudentInfo) {
     if (student) {
       setMe({ role: 'student', student })
@@ -107,12 +119,17 @@ export default function Home() {
     loadStartedRef.current = false
   }
 
-  // Teacher login success: use the response data directly
+  // Teacher/Admin login success
   function handleTeacherLoginSuccess(teacher?: TeacherInfo) {
+    const role = (teacher?.role || 'teacher') as 'admin' | 'teacher'
     if (teacher) {
-      setMe({ role: teacher.role as 'admin' | 'teacher', teacher })
+      setMe({ role, teacher })
     }
-    setView('teacher-home')
+    if (role === 'admin') {
+      setView('admin-home')
+    } else {
+      setView('teacher-home')
+    }
   }
 
   const headerUser = me?.student
@@ -135,6 +152,7 @@ export default function Home() {
           <Landing
             onSelectStudent={() => setView('student-login')}
             onSelectTeacher={() => setView('teacher-login')}
+            onSelectAdmin={() => setView('teacher-login')}
           />
         )}
         {view === 'student-login' && (
@@ -149,16 +167,16 @@ export default function Home() {
             onSuccess={handleTeacherLoginSuccess}
           />
         )}
-        {view === 'student-home' && (
-          studentData ? (
+        {view === 'student-home' &&
+          (studentData ? (
             <StudentDashboard initialData={studentData} />
           ) : (
             <div className="flex min-h-[60vh] items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-          )
-        )}
+          ))}
         {view === 'teacher-home' && <TeacherDashboard />}
+        {view === 'admin-home' && <AdminDashboard />}
       </main>
       <Footer />
     </div>

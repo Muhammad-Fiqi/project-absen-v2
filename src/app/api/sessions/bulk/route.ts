@@ -71,7 +71,6 @@ export async function POST(req: NextRequest) {
     let nextNum = (Number(maxRows[0]?.m ?? 0) || 0) + 1
 
     const createdSessions: any[] = []
-    const dayDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())
 
     for (const s of sessions) {
       if (!s.startTime || !s.endTime || !s.mode) {
@@ -81,12 +80,27 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      const [startH, startM] = s.startTime.split(':').map(Number)
-      const [endH, endM] = s.endTime.split(':').map(Number)
-      const startDateTime = new Date(dayDate)
-      startDateTime.setHours(startH, startM, 0, 0)
-      const endDateTime = new Date(dayDate)
-      endDateTime.setHours(endH, endM, 0, 0)
+      let startDateTime: Date
+      let endDateTime: Date
+
+      if (s.startTime.includes('T')) {
+        startDateTime = new Date(s.startTime)
+      } else {
+        startDateTime = new Date(`${date}T${s.startTime}:00`)
+      }
+
+      if (s.endTime.includes('T')) {
+        endDateTime = new Date(s.endTime)
+      } else {
+        endDateTime = new Date(`${date}T${s.endTime}:00`)
+      }
+
+      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+        return NextResponse.json(
+          { error: `Format jam tidak valid (${s.startTime}-${s.endTime})` },
+          { status: 400 }
+        )
+      }
 
       if (endDateTime <= startDateTime) {
         return NextResponse.json(
@@ -106,7 +120,7 @@ export async function POST(req: NextRequest) {
           courseId,
           sessionNumber: nextNum,
           title: `SESI ${nextNum} · ${modeLabel}`,
-          date: dayDate.toISOString(),
+          date: startDateTime.toISOString(),
           startTime: startDateTime.toISOString(),
           endTime: endDateTime.toISOString(),
           mode: s.mode,

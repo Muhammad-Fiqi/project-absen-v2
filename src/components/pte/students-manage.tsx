@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Loader2, Search, Users, Zap, PackageOpen, Plus, History, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Gift, Phone, Mail,
+  Loader2, Search, Users, Zap, PackageOpen, Plus, History, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Gift, Phone, Mail, Edit3, Trash2, KeyRound,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
-import { apiGet, apiPost } from '@/lib/api-client'
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client'
 import { toast } from 'sonner'
 import type { StudentManageRow } from '@/lib/types'
 
@@ -25,6 +25,15 @@ export function StudentsManage() {
   const [filter, setFilter] = useState<'all' | 'exhausted' | 'expiring' | 'healthy'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [extendTarget, setExtendTarget] = useState<StudentManageRow | null>(null)
+
+  // Create/Edit dialog
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingStudent, setEditingStudent] = useState<StudentManageRow | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '',
+  })
 
   async function load() {
     setLoading(true)
@@ -39,6 +48,71 @@ export function StudentsManage() {
   }
 
   useEffect(() => { load() }, [])
+
+  function resetForm() {
+    setForm({ studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '' })
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.studentCode || !form.name) {
+      toast.error('Kode siswa dan nama wajib diisi')
+      return
+    }
+    setSaving(true)
+    try {
+      await apiPost('/api/students', form)
+      toast.success('Siswa berhasil ditambahkan')
+      setCreateOpen(false)
+      resetForm()
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menambah siswa')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function openEdit(s: StudentManageRow) {
+    setEditingStudent(s)
+    setForm({
+      studentCode: s.studentCode,
+      name: s.name,
+      email: s.email || '',
+      phone: s.phone || '',
+      sessionQuota: s.sessionQuota,
+      pinHash: '',
+    })
+    setEditOpen(true)
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingStudent) return
+    setSaving(true)
+    try {
+      await apiPatch(`/api/students/${editingStudent.id}`, form)
+      toast.success('Data siswa berhasil diperbarui')
+      setEditOpen(false)
+      setEditingStudent(null)
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memperbarui siswa')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(s: StudentManageRow) {
+    if (!confirm(`Yakin ingin menghapus ${s.name} (${s.studentCode})?\nSemua data absensi juga akan dihapus.`)) return
+    try {
+      await apiDelete(`/api/students/${s.id}`)
+      toast.success('Siswa berhasil dihapus')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menghapus siswa')
+    }
+  }
 
   const filtered = students.filter((s) => {
     const q = query.toLowerCase()
@@ -94,6 +168,9 @@ export function StudentsManage() {
               {l}
             </Button>
           ))}
+          <Button size="sm" onClick={() => { resetForm(); setCreateOpen(true) }} className="h-8 gap-1">
+            <Plus className="h-3.5 w-3.5" /> Tambah
+          </Button>
         </div>
       </div>
 
@@ -173,7 +250,13 @@ export function StudentsManage() {
                           </div>
                         </div>
                       )}
-                      <div className="mt-3 flex justify-end">
+                      <div className="mt-3 flex flex-wrap justify-end gap-2">
+                        <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => openEdit(s)}>
+                          <Edit3 className="h-3.5 w-3.5" /> Edit
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-8 gap-1 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(s)}>
+                          <Trash2 className="h-3.5 w-3.5" /> Hapus
+                        </Button>
                         <Button size="sm" onClick={() => setExtendTarget(s)} className="gap-1.5">
                           <Plus className="h-3.5 w-3.5" /> Perpanjang Kuota
                         </Button>
@@ -189,6 +272,106 @@ export function StudentsManage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Create Student Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" /> Tambah Siswa Baru
+            </DialogTitle>
+            <DialogDescription>Masukkan data siswa untuk mendaftarkan akun baru.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Kode Siswa *</Label>
+                <Input value={form.studentCode} onChange={(e) => setForm({ ...form, studentCode: e.target.value })} placeholder="Mis: PTE010" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nama Lengkap *</Label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Mis: Fulan" required />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email (opsional)</Label>
+                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">No. HP (opsional)</Label>
+                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Kuota Sesi</Label>
+                <Input type="number" min={1} max={100} value={form.sessionQuota} onChange={(e) => setForm({ ...form, sessionQuota: Number(e.target.value) })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">PIN / Password</Label>
+                <Input value={form.pinHash} onChange={(e) => setForm({ ...form, pinHash: e.target.value })} placeholder="Kosong = 4 digit terakhir kode" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Batal</Button>
+              <Button type="submit" disabled={saving} className="gap-1.5">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Tambah Siswa
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Student Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit3 className="h-4 w-4 text-primary" /> Edit Siswa
+            </DialogTitle>
+            <DialogDescription>Ubah data siswa atau reset PIN.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Kode Siswa</Label>
+                <Input value={form.studentCode} onChange={(e) => setForm({ ...form, studentCode: e.target.value })} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nama Lengkap</Label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email</Label>
+                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">No. HP</Label>
+                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Kuota Sesi</Label>
+              <Input type="number" min={1} max={100} value={form.sessionQuota} onChange={(e) => setForm({ ...form, sessionQuota: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">PIN Baru (kosongkan jika tidak diubah)</Label>
+              <Input value={form.pinHash} onChange={(e) => setForm({ ...form, pinHash: e.target.value })} placeholder="Biarkan kosong jika tidak ganti PIN" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Batal</Button>
+              <Button type="submit" disabled={saving} className="gap-1.5">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
+                Simpan Perubahan
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {extendTarget && (
         <ExtendDialog

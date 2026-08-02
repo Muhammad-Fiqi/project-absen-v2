@@ -1,11 +1,67 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { student, course, attendance, quotaExtension, adminUser } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
+import { newId } from '@/lib/id'
 import type { StudentManageRow } from '@/lib/types'
 
 export const runtime = 'nodejs'
+
+// POST /api/students — Create a new student
+export async function POST(req: NextRequest) {
+  const teacher = await getCurrentTeacher()
+  if (!teacher || teacher.role !== 'admin') {
+    return NextResponse.json({ error: 'Hanya admin yang dapat menambah siswa' }, { status: 403 })
+  }
+
+  try {
+    const body = await req.json()
+    const { studentCode, name, email, phone, courseId, courseCode, sessionQuota, pinHash } = body
+
+    if (!studentCode || !name) {
+      return NextResponse.json({ error: 'Kode siswa dan nama wajib diisi' }, { status: 400 })
+    }
+
+    const cleanCode = studentCode.trim().toUpperCase()
+
+    // Check duplicate
+    const existing = await db.select({ id: student.id }).from(student).where(eq(student.studentCode, cleanCode)).limit(1)
+    if (existing.length > 0) {
+      return NextResponse.json({ error: `Kode siswa ${cleanCode} sudah terdaftar` }, { status: 409 })
+    }
+
+    // Find course if courseCode provided
+    let finalCourseId = courseId || null
+    let finalCourseCode = courseCode || 'PTE-2026-A'
+    if (!finalCourseId && finalCourseCode) {
+      const courseRows = await db.select().from(course).where(eq(course.code, finalCourseCode)).limit(1)
+      if (courseRows[0]) finalCourseId = courseRows[0].id
+    }
+
+    const newStudentId = newId('stu')
+    await db.insert(student).values({
+      id: newStudentId,
+      studentCode: cleanCode,
+      name: name.trim(),
+      email: email?.trim() || null,
+      phone: phone?.trim() || null,
+      courseCode: finalCourseCode,
+      courseId: finalCourseId,
+      pinHash: pinHash || cleanCode.slice(-4), // default PIN = last 4 of code
+      sessionQuota: sessionQuota ?? 15,
+      createdAt: new Date().toISOString(),
+    })
+
+    return NextResponse.json({
+      success: true,
+      student: { id: newStudentId, studentCode: cleanCode, name: name.trim() },
+    })
+  } catch (e) {
+    console.error('POST /api/students error', e)
+    return NextResponse.json({ error: 'Gagal menambah siswa' }, { status: 500 })
+  }
+}
 
 // GET /api/students — list all students with quota usage + extensions
 export async function GET() {

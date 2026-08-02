@@ -128,7 +128,7 @@ export async function GET() {
       isToday,
       isPast,
       attendedSessionId,
-      sessions: daySessions.map((s) => {
+      sessions: daySessions.map((s, index) => {
         const window = checkInWindow(s.startTime, s.endTime, courseRow.graceMinutesBefore, courseRow.graceMinutesAfter, now)
         const effectivelyOpen = s.status === 'active' ? true : window.open
         const canCheckIn =
@@ -141,7 +141,7 @@ export async function GET() {
 
         return {
           id: s.id,
-          sessionNumber: s.sessionNumber,
+          sessionNumber: index + 1,
           title: s.title,
           startTime: s.startTime,
           endTime: s.endTime,

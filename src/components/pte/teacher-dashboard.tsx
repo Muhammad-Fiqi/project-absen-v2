@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import {
-  Calendar, Plus, QrCode, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck, Layers,
+  Calendar, Plus, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck, Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { apiGet, apiPost, apiPatch } from '@/lib/api-client'
-import { QrDisplay } from './qr-display'
 import { AttendeesView } from './attendees-view'
 import { ReportsView } from './reports-view'
 import { StudentsManage } from './students-manage'
@@ -125,8 +124,8 @@ export function TeacherDashboard() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold sm:text-2xl">Panel Pengajar</h1>
-          <p className="text-sm text-muted-foreground">
-            Kelola jadwal multi-sesi, tampilkan QR, kelola kuota siswa & pantau laporan
+<p className="text-sm text-muted-foreground">
+            Kelola jadwal multi-sesi, kelola kuota siswa, & pantau laporan
           </p>
         </div>
         <div className="flex gap-2">
@@ -146,9 +145,8 @@ export function TeacherDashboard() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-6 max-md:h-[100px]">
+        <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-5 max-md:h-[100px]">
           <TabsTrigger value="sessions" className="gap-1.5"><Calendar className="h-3.5 w-3.5" /> Jadwal</TabsTrigger>
-          <TabsTrigger value="qr" className="gap-1.5" disabled={!selectedSession}><QrCode className="h-3.5 w-3.5" /> QR Live</TabsTrigger>
           <TabsTrigger value="attendees" className="gap-1.5" disabled={!selectedSession}><Users className="h-3.5 w-3.5" /> Kehadiran</TabsTrigger>
           <TabsTrigger value="students" className="gap-1.5"><Gift className="h-3.5 w-3.5" /> Siswa & Kuota</TabsTrigger>
           <TabsTrigger value="extensions" className="gap-1.5 relative">
@@ -168,35 +166,27 @@ export function TeacherDashboard() {
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
             </div>
           ) : (
-            <SessionsByDay days={days} selectedId={selectedSession?.id} onSelect={(s) => { setSelectedSession(s); setTab(s.status === 'active' || s.status === 'scheduled' ? 'qr' : 'attendees') }} onUpdateStatus={updateStatus} />
+            <SessionsByDay days={days} selectedId={selectedSession?.id} onSelect={(s) => { setSelectedSession(s); setTab('attendees') }} onUpdateStatus={updateStatus} />
           )}
-        </TabsContent>
-
-        <TabsContent value="qr" className="mt-0 animate-fade-in">
-          {selectedSession ? (
-            <div className="space-y-4">
-              <SessionInfoBar session={selectedSession} />
-              <QrDisplay sessionId={selectedSession.id} sessionTitle={selectedSession.title} />
-              <div className="flex flex-wrap gap-2">
-                {selectedSession.status === 'scheduled' && (
-                  <Button onClick={() => updateStatus(selectedSession.id, 'active')} className="gap-1.5">
-                    <Play className="h-4 w-4" /> Buka Absensi
-                  </Button>
-                )}
-                {selectedSession.status === 'active' && (
-                  <Button onClick={() => updateStatus(selectedSession.id, 'completed')} variant="default" className="gap-1.5">
-                    <CheckCircle2 className="h-4 w-4" /> Tutup & Selesai
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : <div className="py-12 text-center text-sm text-muted-foreground">Pilih sesi dulu</div>}
         </TabsContent>
 
         <TabsContent value="attendees" className="mt-0 animate-fade-in">
           {selectedSession ? (
             <div className="space-y-4">
-              <SessionInfoBar session={selectedSession} />
+              <SessionInfoBar session={selectedSession}>
+                <div className="flex flex-wrap gap-2">
+                  {selectedSession.status === 'scheduled' && (
+                    <Button onClick={() => updateStatus(selectedSession.id, 'active')} className="gap-1.5">
+                      <Play className="h-4 w-4" /> Buka Absensi
+                    </Button>
+                  )}
+                  {selectedSession.status === 'active' && (
+                    <Button onClick={() => updateStatus(selectedSession.id, 'completed')} variant="default" className="gap-1.5">
+                      <CheckCircle2 className="h-4 w-4" /> Tutup & Selesai
+                    </Button>
+                  )}
+                </div>
+              </SessionInfoBar>
               <AttendeesView sessionId={selectedSession.id} />
             </div>
           ) : <div className="py-12 text-center text-sm text-muted-foreground">Pilih sesi dulu</div>}
@@ -221,7 +211,7 @@ export function TeacherDashboard() {
   )
 }
 
-function SessionInfoBar({ session }: { session: SessionItem }) {
+function SessionInfoBar({ session, children }: { session: SessionItem; children?: ReactNode }) {
   const st = STATUS_STYLE[session.status] || STATUS_STYLE.scheduled
   const fmtDate = new Date(session.startTime).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })
   const fmtTime = (d: string) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
@@ -251,6 +241,7 @@ function SessionInfoBar({ session }: { session: SessionItem }) {
           </Badge>
         </div>
       </div>
+      {children && <div className="w-full sm:w-auto">{children}</div>}
     </div>
   )
 }

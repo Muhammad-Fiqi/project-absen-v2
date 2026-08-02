@@ -1,7 +1,7 @@
 # PTE Attendance — Panduan Setup Lengkap (Windows + Vercel + Turso)
 
 Panduan ini mencakup **seluruh proses** dari nol sampai aplikasi berjalan online, dengan fokus **Windows saja** (tanpa WSL, tanpa Turso CLI).
-Teknologi yang digunakan: **Bun** (runtime), **Vercel** (hosting), **Turso** (database cloud).
+Teknologi yang digunakan: **Bun** (runtime), **Next.js App Router** (framework), **Drizzle ORM** (database ORM), **Vercel** (hosting), **Turso** (database cloud SQLite).
 
 ---
 
@@ -13,7 +13,7 @@ Teknologi yang digunakan: **Bun** (runtime), **Vercel** (hosting), **Turso** (da
 4. [Registrasi & Setup Turso (Database Cloud)](#4-registrasi--setup-turso-database-cloud)
 5. [Registrasi & Setup Vercel (Hosting)](#5-registrasi--setup-vercel-hosting)
 6. [Deploy ke Vercel](#6-deploy-ke-vercel)
-7. [Seeding Data Awal](#7-seeding-data-awal)
+7. [Seeding & Impor Data Siswa](#7-seeding--impor-data-siswa)
 8. [Command Referensi Cepat](#8-command-referensi-cepat)
 9. [Troubleshooting](#9-troubleshooting)
 10. [Bersihkan File Tidak Digunakan](#10-bersihkan-file-tidak-digunakan)
@@ -32,7 +32,7 @@ Yang perlu dipersiapkan:
 | Akun Turso | — | Database cloud SQLite (gratis) |
 | Akun Vercel | — | Hosting (gratis untuk hobby) |
 
-> **PENTING:** Panduan ini hanya menggunakan **Bun**. Jangan campur dengan npm, yarn, atau pnpm.
+> **PENTING:** Panduan ini menggunakan **Bun** dan **Drizzle ORM**. Jangan campur dengan npm, yarn, pnpm, atau Prisma.
 
 ---
 
@@ -54,11 +54,6 @@ bun --version
 
 ```bash
 curl -fsSL https://bun.sh/install | bash
-```
-
-Setelah terinstal, muat ulang shell:
-
-```bash
 source ~/.bashrc
 bun --version
 ```
@@ -71,20 +66,13 @@ source ~/.bashrc
 bun --version
 ```
 
-### Git (sudah ada di sebagian besar sistem)
+### Git Check
 
-**Windows CMD:**
 ```cmd
 git --version
 ```
 
 Jika belum ada, download dari https://git-scm.com/download/win
-
-**WSL Ubuntu:**
-```bash
-sudo apt update && sudo apt install -y git
-git --version
-```
 
 ---
 
@@ -117,15 +105,18 @@ Buat file `.env` di root project:
 
 ```env
 # Untuk development lokal (SQLite file)
-DATABASE_URL=file:db/custom.db
+DATABASE_TURSO_DATABASE_URL="file:db/custom.db"
+# DATABASE_TURSO_AUTH_TOKEN="" (kosongkan untuk SQLite lokal)
+AUTH_SECRET="secret-acak-anda"
 ```
 
-### Generate Prisma Client & Push Schema
+### Push Schema Drizzle ke Database Lokal
 
 ```cmd
-bunx prisma generate
-bunx prisma db push
+bunx drizzle-kit push
 ```
+
+> **Catatan:** Schema database didefinisikan pada `src/db/schema.ts` dan dikonfigurasikan di `drizzle.config.ts`.
 
 ### Jalankan Development Server
 
@@ -135,60 +126,63 @@ bun run dev
 
 Buka browser ke `http://localhost:3000`
 
-### Seed Data Awal (Development)
+### Seed Data & Impor Siswa (Development)
 
-Jalankan seeding endpoint:
+Jalankan seeding endpoint awal:
 
 ```cmd
 curl -X POST http://localhost:3000/api/setup
 ```
 
+Dan jalankan impor data siswa dari file `Student.csv`:
+
+```cmd
+bun run import:students
+```
+
 Akun demo:
 - Admin: `admin` / `admin123`
 - Pengajar: `pengajar` / `pengajar123`
-- Siswa: `PTE001` / `0001` s/d `PTE005` / `0005`
+- Siswa: `PTE001` / `0001` s/d `PTE005` / `0005` (atau sesuai `Student.csv`)
 
 ---
 
-## 4. Registrasi & Setup Turso (Database Cloud) - Windows (tanpa Turso CLI)
+## 4. Registrasi & Setup Turso (Database Cloud)
 
 Turso menyediakan database SQLite di cloud secara gratis (hingga 500 database, 9GB total).
 
-### 4.1. Buat Database via Dashboard (Windows saja)
-
-Turso menyediakan database SQLite di cloud secara gratis (hingga 500 database, 9GB total).
+### 4.1. Buat Database via Dashboard
 
 1. Buka: https://turso.tech/app
 2. Sign up / Login
 3. Klik **Create Database**
-   - Nama: `pte-attendance` (boleh bebas, tapi konsisten)
-   - Region: pilih yang terdekat
+   - Nama: `absen-ruangpte` (bebas, tetapi konsisten)
+   - Region: pilih yang terdekat (misal: Singapore `sin` / AWS Tokyo `nrt`)
 4. Setelah database dibuat, buka halaman database tersebut → **Settings**
 5. Cari bagian **Connection info**
-6. Copy **URL**
-7. Klik **Create Auth Token**
-8. Copy **token**
+6. Copy **URL** (`libsql://...`)
+7. Klik **Create Auth Token** dan copy **token**
 
 Simpan 2 nilai ini:
-- `DATABASE_URL` → contoh: `libsql://pte-attendance-USERNAME.turso.io`
-- `DATABASE_AUTH_TOKEN` → token string panjang
+- `DATABASE_TURSO_DATABASE_URL` → contoh: `libsql://absen-ruangpte-USERNAME.turso.io`
+- `DATABASE_TURSO_AUTH_TOKEN` → string JWT token panjang
 
-### 4.2. Push Schema Prisma ke Turso (Windows)
+### 4.2. Push Schema Drizzle ke Turso Cloud
 
-Buat file `.env.production` sementara (untuk memudahkan push):
+Buka file `.env` sementara (atau tambahkan ke variabel environment):
 
 ```env
-DATABASE_URL="libsql://pte-attendance-USERNAME.turso.io"
-DATABASE_AUTH_TOKEN="token-anda-disini"
+DATABASE_TURSO_DATABASE_URL="libsql://absen-ruangpte-USERNAME.turso.io"
+DATABASE_TURSO_AUTH_TOKEN="token-anda-disini"
 ```
 
-Lalu push schema:
+Lalu jalankan push schema:
 
 ```cmd
-bunx prisma db push
+bunx drizzle-kit push
 ```
 
-> Pastikan `DATABASE_URL` diawali `libsql://` agar driver Turso aktif.
+> Pastikan `DATABASE_TURSO_DATABASE_URL` diawali `libsql://` agar driver Turso / `@libsql/client` aktif.
 
 ---
 
@@ -201,12 +195,11 @@ bunx prisma db push
 
 ### 5.2. Install Vercel CLI (Windows)
 
-**Windows CMD:**
 ```cmd
 bun add -g vercel
 ```
 
-### 5.3. Login ke Vercel CLI (Windows)
+### 5.3. Login ke Vercel CLI
 
 ```cmd
 vercel login
@@ -216,43 +209,22 @@ Pilih GitHub sebagai provider. Browser akan terbuka untuk otorisasi.
 
 ### 5.4. Set Environment Variables di Vercel
 
-**Via CLI (CMD / WSL):**
-```bash
-vercel env add DATABASE_URL production
-# Paste: libsql://pte-attendance-USERNAME.turso.io
+**Via Dashboard Vercel (direkomendasikan):**
+1. Buka https://vercel.com/dashboard
+2. Pilih project → **Settings** → **Environment Variables**
+3. Tambahkan 3 variabel berikut (pilih Production & Development):
+   - `DATABASE_TURSO_DATABASE_URL` = `libsql://absen-ruangpte-USERNAME.turso.io`
+   - `DATABASE_TURSO_AUTH_TOKEN` = `token-anda-disini`
+   - `AUTH_SECRET` = `secret-acak-anda`
 
-vercel env add DATABASE_AUTH_TOKEN production
-# Paste: token-anda-disini
-
-vercel env add AUTH_SECRET production
-# Paste: buat secret acak, contoh:
-```
-
-Untuk membuat secret acak:
-
-**CMD (Windows):**
+Untuk membuat secret acak `AUTH_SECRET`:
 ```cmd
 powershell -c "[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Max 256 }) -as [byte[]])"
 ```
 
-**WSL Ubuntu:**
-```bash
-openssl rand -base64 32
-```
+### 5.5. Konfigurasi Build di Vercel (`vercel.json`)
 
-**Via Dashboard Vercel (alternatif):**
-1. Buka https://vercel.com/dashboard
-2. Pilih project → Settings → Environment Variables
-3. Tambahkan:
-   - `DATABASE_URL` = `libsql://pte-attendance-USERNAME.turso.io`
-   - `DATABASE_AUTH_TOKEN` = `token-anda-disini`
-   - `AUTH_SECRET` = `secret-acak-anda`
-
-### 5.5. Konfigurasi Build di Vercel
-
-Vercel otomatis mendeteksi Next.js. Tapi pastikan:
-
-**Via CLI — buat file `vercel.json` di root project:**
+Di root project pastikan terdapat file `vercel.json`:
 
 ```json
 {
@@ -263,7 +235,7 @@ Vercel otomatis mendeteksi Next.js. Tapi pastikan:
 }
 ```
 
-> **Catatan:** Vercel secara default menggunakan `npm`. Karena kita pakai Bun, perlu override di Settings → Build & Development Settings:
+> **Catatan:** Pada Vercel Dashboard -> Settings -> Build & Development Settings, isi:
 > - **Build Command:** `bun run build`
 > - **Install Command:** `bun install`
 > - **Output Directory:** `.next/standalone`
@@ -272,70 +244,49 @@ Vercel otomatis mendeteksi Next.js. Tapi pastikan:
 
 ## 6. Deploy ke Vercel
 
-### 6.1. Deploy Pertama Kali (Windows)
+### 6.1. Deploy Pertama Kali
 
-Pastikan sudah commit semua perubahan ke Git:
+Commit semua perubahan ke Git:
 
 ```cmd
 git add .
-git commit -m "initial commit: PTE attendance QR-only"
+git commit -m "initial commit: PTE attendance QR-only with Drizzle"
 git push origin main
 ```
 
-Lalu deploy:
+Lalu deploy via CLI:
 
 ```cmd
 vercel --prod
 ```
 
-Vercel akan memproses dan memberikan URL seperti `https://pte-attendance.vercel.app`.
+Vercel akan memberikan URL seperti `https://pte-attendance.vercel.app`.
 
-### 6.2. Setup Database di Vercel (Pertama Kali)
+### 6.2. Setup Data di Production
 
-Setelah deploy berhasil, seed database production:
+Setelah deploy berhasil, jalankan seeding dan impor data di database Turso:
 
 ```bash
 curl -X POST https://pte-attendance.vercel.app/api/setup
+bun run import:students
 ```
-
-### 6.3. Deploy Selanjutnya
-
-Setiap ada perubahan kode:
-
-```bash
-git add .
-git commit -m "deskripsi perubahan"
-git push origin main
-vercel --prod
-```
-
-Atau hubungkan GitHub repo ke Vercel dashboard agar auto-deploy saat push ke `main`.
 
 ---
 
-## 7. Seeding Data Awal
+## 7. Seeding & Impor Data Siswa
 
-### Development (lokal)
+### Command Seeding & Import
 
-```bash
-curl -X POST http://localhost:3000/api/setup
-```
+| Tujuan | Command / Action |
+|--------|------------------|
+| Seed akun Admin, Pengajar, & Course | `curl -X POST http://localhost:3000/api/setup` |
+| Import Data Siswa dari `Student.csv` | `bun run import:students` |
 
-### Production (Vercel)
+### Struktur Data `Student.csv`
+File `Student.csv` di root project memiliki format:
+`id, studentCode, name, email, phone, courseCode, courseId, pinHash, sessionQuota, quotaExtendedAt, quotaNote, createdAt`
 
-```bash
-curl -X POST https://nama-app-anda.vercel.app/api/setup
-```
-
-### Apa yang Dibuat oleh Seed?
-
-| Data | Jumlah | Detail |
-|------|--------|--------|
-| Course | 1 | PTE-2024-A "PTE Academic Preparation" |
-| Admin | 2 | admin (role: admin), pengajar (role: teacher) |
-| Siswa | 5 | PTE001–PTE005 |
-
-Seed hanya berjalan sekali. Jika database sudah ada data, endpoint akan menolak.
+Jalankan `bun run import:students` untuk menyelaraskan seluruh data siswa dari CSV ke database Drizzle/Turso.
 
 ---
 
@@ -347,10 +298,9 @@ Seed hanya berjalan sekali. Jika database sudah ada data, endpoint akan menolak.
 |----------|---------|
 | Install dependencies | `bun install` |
 | Jalankan dev server | `bun run dev` |
-| Cek kode quality | `bun run lint` |
-| Push schema ke DB | `bunx prisma db push` |
-| Generate Prisma client | `bunx prisma generate` |
-| Reset database | `bunx prisma db push --force-reset` |
+| Cek linting kode | `bun run lint` |
+| Push schema Drizzle ke DB | `bunx drizzle-kit push` |
+| Import data siswa dari CSV | `bun run import:students` |
 
 ### Command Deploy
 
@@ -359,127 +309,39 @@ Seed hanya berjalan sekali. Jika database sudah ada data, endpoint akan menolak.
 | Login Vercel | `vercel login` |
 | Deploy production | `vercel --prod` |
 | Deploy preview | `vercel` |
-| Tambah env var | `vercel env add NAMA production` |
-| Lihat env vars | `vercel env ls` |
-
-### Command Turso
-
-Karena panduan ini Windows-only (tanpa Turso CLI), langkah Turso dilakukan via dashboard:
-- https://turso.tech/app
 
 ---
 
 ## 9. Troubleshooting
 
-### "prisma db push" gagal: table already exists
+### Drizzle: "drizzle-kit push" gagal
+1. Pastikan `DATABASE_TURSO_DATABASE_URL` sudah benar di `.env` (misal `file:db/custom.db` untuk lokal atau `libsql://...` untuk Turso).
+2. Jika menggunakan Turso cloud, pastikan `DATABASE_TURSO_AUTH_TOKEN` tidak kosong dan masih valid di Turso dashboard.
 
-```bash
-bunx prisma db push --force-reset
-```
+### Vercel deploy gagal: Build error
+1. Pastikan di Vercel Dashboard:
+   - **Build Command:** `bun run build`
+   - **Install Command:** `bun install`
+2. Periksa log build di Vercel via CLI:
+   ```bash
+   vercel logs --prod
+   ```
 
-### Vercel deploy gagal: build error
-
-Pastikan di Vercel dashboard:
-- **Build Command:** `bun run build`
-- **Install Command:** `bun install`
-
-Jika masih gagal, cek `vercel logs`:
-
-```bash
-vercel logs --prod
-```
-
-### "Module not found: @prisma/adapter-libsql"
-
-```bash
-bun install
-bunx prisma generate
-```
-
-### Database Turso connection error
-
-1. Pastikan `DATABASE_URL` dimulai dengan `libsql://` (bukan `file:`)
-2. Pastikan `DATABASE_AUTH_TOKEN` tidak kosong
-3. Cek token masih valid di Turso dashboard
-
-### Cookie tidak persist (login gagal)
-
-Bug ini sudah diperbaiki. Pastikan menggunakan kode terbaru dari repo.
-
-### QR Scanner tidak berfungsi di desktop
-
-QR scanner membutuhkan kamera. Di desktop tanpa webcam, gunakan browser mobile atau webcam external.
+### Cookie & Auth Session
+Login menggunakan JWT session dengan `AUTH_SECRET`. Jika mengalami masalah session expired / invalid cookie:
+1. Pastikan `AUTH_SECRET` terisi di env Vercel.
+2. Hapus cookie `pte_auth` pada browser dan login kembali.
 
 ---
 
 ## 10. Bersihkan File Tidak Digunakan
 
-Setelah project siap untuk production, hapus folder/file berikut yang **tidak diperlukan** untuk deployment:
+Untuk merapikan repository lokal:
 
-### Folder yang Bisa Dihapus
-
-```bash
-# Folder konfigurasi sandbox (tidak relevan untuk production)
-rm -rf .zscript
-rm -rf agent-ctx
-rm -rf examples
-rm -rf download
-rm -rf skills
-
-# Folder cache/build lokal
-rm -rf .next
-rm -rf node_modules/.cache
-```
-
-### File yang Bisa Dihapus
-
-```bash
-# Docker configs (tidak dipakai untuk Vercel deployment)
-rm -f Dockerfile
-rm -f docker-compose.yml
-rm -f .dockerignore
-rm -f Caddyfile
-
-# Dokumen lama yang sudah digantikan oleh file ini
-rm -f DEPLOY.md
-
-# Environment file lokal (JANGAN hapus jika masih development)
-# rm -f .env
-
-# Database lokal (tidak dipakai di production yang pakai Turso)
-rm -f db/custom.db
-rm -f db/custom.db-journal
-```
-
-### Command Bersih Total (Copy-Paste)
-
-**WSL Ubuntu / macOS / Linux:**
-```bash
-rm -rf .zscript agent-ctx examples download skills .next node_modules/.cache
-rm -f Dockerfile docker-compose.yml .dockerignore Caddyfile DEPLOY.md
-rm -f db/custom.db db/custom.db-journal
-```
-
-**CMD (Windows):**
 ```cmd
 rmdir /s /q .zscript agent-ctx examples download skills .next
 del Dockerfile docker-compose.yml .dockerignore Caddyfile DEPLOY.md
 del db\custom.db db\custom.db-journal
-```
-
-### .gitignore yang Direkomendasikan
-
-Pastikan file berikut ada di `.gitignore` (sudah ada di project ini):
-
-```
-node_modules/
-.next/
-db/*.db
-db/*.db-journal
-.env
-.env.local
-.env.production
-*.log
 ```
 
 ---
@@ -488,40 +350,34 @@ db/*.db-journal
 
 ```
 pte-attendance/
-├── prisma/
-│   └── schema.prisma          # Schema database
 ├── src/
+│   ├── db/
+│   │   └── schema.ts          # Schema database Drizzle (SQLite / Turso)
 │   ├── app/
-│   │   ├── api/               # API routes
-│   │   │   ├── auth/          # Login/Logout
-│   │   │   ├── sessions/      # CRUD sesi + QR
-│   │   │   ├── student/       # Dashboard siswa
-│   │   │   ├── students/      # Kelola siswa
-│   │   │   ├── reports/       # Laporan
-│   │   │   ├── extension-requests/ # Perpanjangan kuota
-│   │   │   ├── setup/         # Seeding awal
-│   │   │   └── me/            # Session check
+│   │   ├── api/               # API routes (auth, sessions, bulk, students, setup, etc)
 │   │   ├── layout.tsx
-│   │   └── page.tsx           # Halaman utama
+│   │   └── page.tsx           # Halaman utama Next.js App Router
 │   ├── components/
-│   │   ├── pte/               # Komponen bisnis
-│   │   └── ui/                # shadcn/ui components
-│   ├── hooks/
+│   │   ├── pte/               # Komponen utama PTE (bulk-session-dialog, attendance, QR, etc)
+│   │   └── ui/                # Component library (shadcn/ui)
 │   └── lib/
 │       ├── api-client.ts      # Fetch wrapper
 │       ├── auth.ts            # Cookie session auth
-│       ├── db.ts              # Prisma client (SQLite/Turso)
+│       ├── db.ts              # Drizzle ORM client (Turso/SQLite)
 │       ├── security.ts        # QR crypto
-│       ├── types.ts           # TypeScript types
-│       └── utils.ts           # Helper functions
+│       └── utils.ts           # Helper utilities
+├── scripts/
+│   └── import-students.js     # Script impor data siswa dari Student.csv
 ├── public/
 ├── .env                       # Env lokal (TIDAK di-commit)
 ├── .gitignore
+├── drizzle.config.ts          # Drizzle ORM config
 ├── next.config.ts
 ├── package.json
+├── Student.csv                # Data siswa awal
 ├── tailwind.config.ts
 ├── tsconfig.json
-└── vercel.json                # Vercel config
+└── vercel.json                # Vercel deployment config
 ```
 
 ---
@@ -529,10 +385,10 @@ pte-attendance/
 ## Ringkasan Arsitektur
 
 ```
-┌──────────┐     QR Scan      ┌──────────────┐     QR Verify     ┌─────────┐
-│  Siswa   │ ──────────────→  │  Vercel API  │ ──────────────→  │  Turso  │
-│ (Browser)│                  │  (Next.js)   │                  │ (SQLite) │
-└──────────┘                  └──────┬───────┘                  └─────────┘
+┌──────────┐     QR Scan      ┌──────────────┐     Drizzle Query    ┌─────────┐
+│  Siswa   │ ──────────────→  │  Vercel API  │ ──────────────────→  │  Turso  │
+│ (Browser)│                  │  (Next.js)   │                      │ (SQLite) │
+└──────────┘                  └──────┬───────┘                      └─────────┘
                                      │
 ┌──────────┐     Tampilkan QR ────────┤
 │ Pengajar  │ ──────────────────────→  │
@@ -544,7 +400,3 @@ pte-attendance/
                               │  (20 detik)   │
                               └───────────────┘
 ```
-
-- **Siswa** scan QR → API verifikasi token → cek kuota + kapasitas + jendela waktu → simpan kehadiran
-- **Pengajar** buka sesi → tampilkan QR yang berputar → pantau kehadiran real-time
-- **Kapasitas** tiap sesi default 10 orang (bisa di-custom saat buat sesi)

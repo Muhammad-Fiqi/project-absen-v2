@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { integer, real, text, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { integer, real, text, sqliteTable, uniqueIndex, index } from 'drizzle-orm/sqlite-core'
 
 // Drizzle schema for Turso/libsql (SQLite dialect)
 // Note: IDs use string (cuid) same as Prisma.
@@ -84,7 +84,7 @@ export const attendance = sqliteTable(
   },
   (t) => ({
     uniqueSessionStudent: uniqueIndex('Attendance_session_student_unique').on(t.sessionId, t.studentId),
-    idxStudentDayKey: uniqueIndex('Attendance_student_daykey_idx').on(t.studentId, t.dayKey),
+    idxStudentDayKey: index('Attendance_student_daykey_idx').on(t.studentId, t.dayKey),
   })
 )
 

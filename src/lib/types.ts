@@ -122,29 +122,12 @@ export interface StudentDashboard {
   recentDays: DayGroup[]
 }
 
-export interface QrPayload {
-  sessionId: string
-  token: string
-  ts: number
-  window: number
-  hmac: string
-}
-
-export interface AttendanceSubmitRequest {
-  sessionId: string
-  studentId: string
-  qr?: { sessionId: string; token: string; ts?: number; window?: number }
-  code?: string
-}
-
 export interface AttendanceSubmitResponse {
   success: boolean
   status: AttendanceStatus
   verified: boolean
   message: string
   checks: {
-    qr?: { passed: boolean; reason?: string }
-    code?: { passed: boolean; reason?: string }
     time?: { passed: boolean; reason?: string }
     quota?: { passed: boolean; reason?: string; remaining?: number }
     daily?: { passed: boolean; reason?: string; attendedSession?: string }

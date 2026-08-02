@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -11,38 +11,44 @@ node_modules
 !.yarn/versions
 
 # Bun
-.bun
+.bun/
+bun.lock
 
 # Next.js
-/.next/
-/out/
+.next/
+out/
+coverage/
 
 # production
-/build
+build/
+dist/
 
-# Prisma local database (now libsql local dev)
+# Local database / runtime state
 /db/*.db
 /db/*.db-journal
+/db/*.db-wal
+/db/*.db-shm
+/auth/
+/auth-wal/
 
-# Generated client (legacy Prisma — prevent re-appearance)
+# Generated client / compiled output
 /src/generated/
+*.tsbuildinfo
 
-# local environment files
+# Local environment files
 .env*
+.env.local
+.env.development.local
+.env.production.local
 
 # Vercel
-.vercel
+.vercel/
 
-# Docker
-.dockerignore
-Dockerfile
-docker-compose.yml
-
-# editor/IDE
+# Editor / IDE
 .vscode/
 .idea/
 
-# logs
+# Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -53,37 +59,39 @@ server.log
 dev.log
 dev.out.log
 
-# temporary files
+# Temporary / ephemeral files
 *.pem
 *.swp
 *.swo
 *.tmp
 *.temp
+local-*
 
 # OS
 .DS_Store
+Thumbs.db
 
-# generated files
-*.tsbuildinfo
-next-env.d.ts
-
-# local/preview artifacts
-local-*
+# Local workspace artifacts
+.blackbox/
+.gemini/
+.project-memory/
+.zcode/
+.zscripts/
+.tool-versions
 .prompt
 .claude
 .z-ai-config
-.prompt
 
-# local workspace artifacts
-.zscripts/
+# Tool / upload outputs
 tool-results/
 upload/
 
 # Skills directory (local agent/workflow files)
 /skills/
 
-#additional files to ignore
-skills.md
+# Personal / local planning artifacts
 TODO.md
+worklog.md
+skills.md
 laporan-absensi-PTE-2026-A.csv
 Student.csv

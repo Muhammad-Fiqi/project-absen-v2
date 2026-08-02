@@ -6,12 +6,12 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  QrCode,
   Search,
   Users,
   ShieldCheck,
   MoveDown,
   X,
+  Plus,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -99,6 +99,13 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
   const [kickOpen, setKickOpen] = useState(false)
   const [kickStudent, setKickStudent] = useState<Attendee | null>(null)
   const [kickSubmitting, setKickSubmitting] = useState(false)
+
+  // Manual add attendance state
+  const [addOpen, setAddOpen] = useState(false)
+  const [addStudentCode, setAddStudentCode] = useState('')
+  const [addStatus, setAddStatus] = useState<'present' | 'late'>('present')
+  const [addNote, setAddNote] = useState('')
+  const [addSubmitting, setAddSubmitting] = useState(false)
 
   const loadAttendees = useCallback(() => {
     let active = true
@@ -247,14 +254,19 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Cari siswa…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Cari siswa…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button size="sm" onClick={() => { setAddStudentCode(''); setAddStatus('present'); setAddNote(''); setAddOpen(true) }} className="gap-1.5 shrink-0">
+          <Plus className="h-3.5 w-3.5" /> Tambah
+        </Button>
       </div>
 
       {/* List */}
@@ -283,11 +295,10 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span>{a.studentCode}</span>
-                      {a.attendance ? (
+{a.attendance ? (
                         <>
                           <span>·</span>
                           <span>{new Date(a.attendance.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
-                          {a.attendance.qrVerified && <QrCode className="h-2.5 w-2.5 text-primary" />}
                         </>
                       ) : (
                         <span>· belum absen</span>
@@ -543,6 +554,104 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                 <X className="h-4 w-4" />
               )}
               Keluarkan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tambah Kehadiran Manual Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl border-border/60">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              Tambah Kehadiran Manual
+            </DialogTitle>
+            <DialogDescription>
+              Catat kehadiran siswa secara manual untuk sesi ini.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-sm">Kode Siswa</Label>
+              <Input
+                value={addStudentCode}
+                onChange={(e) => setAddStudentCode(e.target.value.toUpperCase())}
+                placeholder="Masukkan kode siswa (mis: PTE001)"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">Status Kehadiran</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={addStatus === 'present' ? 'default' : 'outline'}
+                  onClick={() => setAddStatus('present')}
+                  className="gap-1.5"
+                >
+                  <CheckCircle2 className="h-4 w-4" /> Hadir
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={addStatus === 'late' ? 'default' : 'outline'}
+                  onClick={() => setAddStatus('late')}
+                  className="gap-1.5"
+                >
+                  <Clock className="h-4 w-4" /> Terlambat
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">Catatan (opsional)</Label>
+              <Textarea
+                value={addNote}
+                onChange={(e) => setAddNote(e.target.value)}
+                placeholder="Mis: Absen manual oleh admin"
+                className="min-h-15 resize-none"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={addSubmitting}>
+              Batal
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!addStudentCode) { toast.error('Masukkan kode siswa'); return }
+                setAddSubmitting(true)
+                try {
+                  await apiPost(`/api/sessions/${sessionId}/attendance-mgmt/add`, {
+                    studentCode: addStudentCode,
+                    status: addStatus,
+                    note: addNote || undefined,
+                  })
+                  toast.success('Kehadiran berhasil dicatat')
+                  setAddOpen(false)
+                  setAddStudentCode('')
+                  setAddNote('')
+                  loadAttendees()
+                } catch (err: unknown) {
+                  const e = err as { body?: { error?: string } }
+                  toast.error(e.body?.error || 'Gagal mencatat kehadiran')
+                } finally {
+                  setAddSubmitting(false)
+                }
+              }}
+              disabled={addSubmitting || !addStudentCode}
+              className="gap-1.5"
+            >
+              {addSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              Catat Kehadiran
             </Button>
           </DialogFooter>
         </DialogContent>
