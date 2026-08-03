@@ -81,6 +81,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
   const [data, setData] = useState<{ attendees: Attendee[]; session: { title: string; sessionNumber: number; status: string } } | null>(null)
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [viewMode, setViewMode] = useState<'all' | 'attended'>('all')
 
   // Izin dialog state
   const [izinOpen, setIzinOpen] = useState(false)
@@ -234,10 +235,18 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
   }
   if (!data) return <div className="text-sm text-muted-foreground">Gagal memuat data.</div>
 
-  const filtered = data.attendees.filter((a) =>
-    a.name.toLowerCase().includes(query.toLowerCase()) ||
-    a.studentCode.toLowerCase().includes(query.toLowerCase())
-  )
+  const filtered = data.attendees.filter((a) => {
+    const matchesQuery =
+      a.name.toLowerCase().includes(query.toLowerCase()) ||
+      a.studentCode.toLowerCase().includes(query.toLowerCase())
+
+    const matchesViewMode =
+      viewMode === 'all'
+        ? true
+        : Boolean(a.attendance && (a.attendance.status === 'present' || a.attendance.status === 'late'))
+
+    return matchesQuery && matchesViewMode
+  })
   const present = data.attendees.filter((a) => a.attendance?.status === 'present').length
   const late = data.attendees.filter((a) => a.attendance?.status === 'late').length
   const absent = data.attendees.filter((a) => !a.attendance || a.attendance.status === 'absent').length
@@ -254,7 +263,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
       </div>
 
       {/* Search */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -263,6 +272,29 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
             onChange={(e) => setQuery(e.target.value)}
             className="pl-9"
           />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Mode tampilan</span>
+          <div className="flex items-center rounded-lg border border-border/60 bg-card p-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === 'all' ? 'default' : 'ghost'}
+              className="h-8 px-3 text-xs"
+              onClick={() => setViewMode('all')}
+            >
+              Semua siswa
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === 'attended' ? 'default' : 'ghost'}
+              className="h-8 px-3 text-xs"
+              onClick={() => setViewMode('attended')}
+            >
+              Sudah hadir
+            </Button>
+          </div>
         </div>
         <Button size="sm" onClick={() => { setAddStudentCode(''); setAddStatus('present'); setAddNote(''); setAddOpen(true) }} className="gap-1.5 shrink-0">
           <Plus className="h-3.5 w-3.5" /> Tambah

@@ -65,6 +65,7 @@ export function AdminDashboard() {
   const [selectedSession, setSelectedSession] = useState<SessionItem | null>(null)
   const [loadingSessions, setLoadingSessions] = useState(true)
   const [bulkOpen, setBulkOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const [pendingExtCount, setPendingExtCount] = useState(0)
   const [editSessionOpen, setEditSessionOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<SessionItem | null>(null)
@@ -179,6 +180,10 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5 bg-background shadow-sm">
+            <Plus className="h-4 w-4 text-primary" />
+            Tambah 1 Sesi
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)} className="gap-1.5 bg-background shadow-sm">
             <Layers className="h-4 w-4 text-primary" />
             Unggah / Ganti Jadwal Mingguan
@@ -237,9 +242,14 @@ export function AdminDashboard() {
                 Unggah file Excel mingguan (Senin-Jumat) untuk mengganti seluruh sesi atau kelola sesi individual.
               </p>
             </div>
-            <Button size="sm" onClick={() => setBulkOpen(true)} className="gap-1.5">
-              <Layers className="h-4 w-4" /> Unggah Excel Jadwal Mingguan
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Tambah 1 Sesi
+              </Button>
+              <Button size="sm" onClick={() => setBulkOpen(true)} className="gap-1.5">
+                <Layers className="h-4 w-4" /> Unggah Excel Jadwal Mingguan
+              </Button>
+            </div>
           </div>
 
           {loadingSessions ? (
@@ -405,6 +415,7 @@ export function AdminDashboard() {
         </TabsContent>
       </Tabs>
 
+      <CreateSessionDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={loadSessions} days={days} />
       <BulkSessionDialog open={bulkOpen} onOpenChange={setBulkOpen} onCreated={loadSessions} />
 
       {/* Session Edit Dialog */}
@@ -464,5 +475,189 @@ export function AdminDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function CreateSessionDialog({
+  open, onOpenChange, onCreated, days,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  onCreated: () => void
+  days: DayGroup[]
+}) {
+  const [loading, setLoading] = useState(false)
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const [form, setForm] = useState({
+    date: todayKey,
+    startTime: '10:00',
+    endTime: '11:30',
+    mode: 'offline' as 'offline' | 'online',
+    platform: 'Office',
+    room: '',
+    teacher: '',
+    topicOfDay: '',
+    notes: '',
+    maxAttendees: 10,
+  })
+
+  useEffect(() => {
+    if (!open) return
+    const sameDay = days.find((d) => d.dayKey === form.date)
+    setForm((f) => ({
+      ...f,
+      topicOfDay: sameDay?.topicOfDay || '',
+      platform: f.mode === 'offline' ? 'Office' : 'Google Meet',
+    }))
+  }, [open, days, form.date])
+
+  useEffect(() => {
+    if (!open) return
+    setForm((f) => ({
+      ...f,
+      platform: f.mode === 'offline' ? 'Office' : f.platform || 'Google Meet',
+    }))
+  }, [form.mode, open])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.date || !form.startTime || !form.endTime) {
+      toast.error('Lengkapi tanggal & jam')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const start = new Date(`${form.date}T${form.startTime}`)
+      const end = new Date(`${form.date}T${form.endTime}`)
+      const rep = await apiGet<{ course: { id: string } }>('/api/reports/course')
+      await apiPost('/api/sessions', {
+        courseId: rep.course.id,
+        date: start.toISOString(),
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        mode: form.mode,
+        platform: form.platform,
+        room: form.room,
+        teacher: form.teacher,
+        topicOfDay: form.topicOfDay,
+        notes: form.notes,
+        maxAttendees: form.maxAttendees,
+      })
+      toast.success('Sesi berhasil dibuat')
+      onOpenChange(false)
+      onCreated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal membuat sesi')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const platformOptions = form.mode === 'offline'
+    ? ['Office', 'Kantor Pusat', 'Cabang']
+    : ['Google Meet', 'Discord', 'Zoom', 'Microsoft Teams']
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto scrollbar-thin">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="h-4 w-4 text-primary" />
+            Tambah 1 Sesi
+          </DialogTitle>
+          <DialogDescription>
+            Tambah satu sesi baru (offline/online) untuk tanggal tertentu.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" size="sm" variant={form.mode === 'offline' ? 'default' : 'outline'} onClick={() => setForm({ ...form, mode: 'offline' })} className="gap-1.5">
+              <Building2 className="h-4 w-4" /> Offline
+            </Button>
+            <Button type="button" size="sm" variant={form.mode === 'online' ? 'default' : 'outline'} onClick={() => setForm({ ...form, mode: 'online' })} className="gap-1.5">
+              <Video className="h-4 w-4" /> Online
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tanggal</Label>
+              <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Pengajar</Label>
+              <Input value={form.teacher} onChange={(e) => setForm({ ...form, teacher: e.target.value })} placeholder="Mis. Mr Dimas" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Jam Mulai</Label>
+              <Input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Jam Selesai</Label>
+              <Input type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} required />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">{form.mode === 'online' ? 'Platform' : 'Tempat'}</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {platformOptions.map((p) => (
+                <Button key={p} type="button" size="sm" variant={form.platform === p ? 'default' : 'outline'} onClick={() => setForm({ ...form, platform: p })} className="h-8">
+                  {p}
+                </Button>
+              ))}
+            </div>
+            <Input value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} placeholder={form.mode === 'online' ? 'Link meeting (opsional)' : 'Nama ruangan (opsional)'} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Maks Peserta</Label>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={form.maxAttendees}
+                onChange={(e) => setForm({ ...form, maxAttendees: Math.max(1, Math.min(100, Number(e.target.value))) })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Materi Hari Ini</Label>
+            <Input value={form.topicOfDay} onChange={(e) => setForm({ ...form, topicOfDay: e.target.value })} placeholder="Mis. Speaking: Read Aloud" />
+            {(() => {
+              const sameDay = days.find((d) => d.dayKey === form.date)
+              if (sameDay?.topicOfDay) {
+                return (
+                  <p className="rounded bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
+                    Hari ini sudah ada materi: <strong>{sameDay.topicOfDay}</strong> — biarkan kosong untuk pakai materi yang sama.
+                  </p>
+                )
+              }
+              return null
+            })()}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="notes" className="text-xs">Catatan (opsional)</Label>
+            <Textarea id="notes" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
+            <Button type="submit" disabled={loading} className="gap-1.5">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Buat Sesi
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
