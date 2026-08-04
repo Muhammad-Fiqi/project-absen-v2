@@ -21,6 +21,7 @@ import { StudentsManage } from './students-manage'
 import { ExtensionRequests } from './extension-requests'
 import { BulkSessionDialog } from './bulk-session-dialog'
 import { toast } from 'sonner'
+import { formatSessionCardTitle } from '@/lib/utils'
 
 interface SessionItem {
   id: string
@@ -223,7 +224,7 @@ function SessionInfoBar({ session, children }: { session: SessionItem; children?
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold">{session.title}</span>
+          <span className="text-sm font-semibold">{formatSessionCardTitle(session.mode)}</span>
           <Badge variant="outline" className={`gap-1 border ${st.cls}`}><st.icon className="h-3 w-3" /> {st.label}</Badge>
           {session.mode === 'online' && <Badge variant="outline" className="gap-1 border-purple-300 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300"><Video className="h-3 w-3" /> {session.platform}</Badge>}
           {session.mode === 'offline' && <Badge variant="outline" className="gap-1"><Building2 className="h-3 w-3" /> Offline</Badge>}
@@ -310,7 +311,7 @@ function SessionsByDay({
                       <div className="mb-1 flex items-start justify-between gap-2">
                         <div className="flex items-center gap-1.5">
                           <ModeIcon className={`h-3.5 w-3.5 ${s.mode === 'online' ? 'text-purple-600 dark:text-purple-400' : 'text-primary'}`} />
-                          <span className="text-xs font-medium">{s.title}</span>
+                          <span className="text-xs font-medium">{formatSessionCardTitle(s.mode)}</span>
                         </div>
                         <Badge variant="outline" className={`h-5 gap-1 px-1 text-[10px] ${st.cls}`}><st.icon className="h-2.5 w-2.5" />{st.label}</Badge>
                       </div>

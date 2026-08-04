@@ -36,6 +36,7 @@ import { RequestExtension } from './request-extension'
 import { AttendanceCalendar } from './attendance-calendar'
 import { SessionCapacity } from './session-capacity'
 import { toast } from 'sonner'
+import { formatSessionCardTitle } from '@/lib/utils'
 import type { StudentDashboard as StudentDashboardData, DayGroup } from '@/lib/types'
 
 interface ExtensionRequestRow {
@@ -473,7 +474,7 @@ function DayGroupCard({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium">{s.title}</span>
+                    <span className="text-sm font-medium">{formatSessionCardTitle(s.mode)}</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
                     <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" /> {fmtTime(s.startTime)}–{fmtTime(s.endTime)}</span>
