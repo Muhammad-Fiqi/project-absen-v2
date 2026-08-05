@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   ShieldCheck, Users, Calendar, UserCheck, BarChart3, Layers, Plus, RefreshCw, Loader2, Play, CheckCircle2, AlertCircle, Clock, MapPin, Building2, Video, Sparkles, MailCheck, BookOpen, Edit3, Trash2,
 } from 'lucide-react'
@@ -59,6 +59,19 @@ const STATUS_STYLE: Record<string, { label: string; cls: string; icon: typeof Cl
   cancelled: { label: 'Dibatalkan', cls: 'bg-destructive/10 text-destructive border-destructive/30', icon: AlertCircle },
 }
 
+type SessionViewMode = 'upcoming' | 'today' | 'past'
+
+function getDayGroupView(day: DayGroup): SessionViewMode {
+  const dayDate = new Date(day.date)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dayStart = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate())
+
+  if (dayStart < today) return 'past'
+  if (dayStart.getTime() === today.getTime()) return 'today'
+  return 'upcoming'
+}
+
 export function AdminDashboard() {
   const [tab, setTab] = useState('students')
   const [days, setDays] = useState<DayGroup[]>([])
@@ -70,6 +83,7 @@ export function AdminDashboard() {
   const [pendingExtCount, setPendingExtCount] = useState(0)
   const [editSessionOpen, setEditSessionOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<SessionItem | null>(null)
+  const [sessionView, setSessionView] = useState<SessionViewMode>('today')
   const [editForm, setEditForm] = useState({
     title: '', startTime: '', endTime: '', mode: 'offline' as string,
     platform: '', room: '', teacher: '', topicOfDay: '', maxAttendees: 10, notes: '', status: '',
@@ -94,6 +108,10 @@ export function AdminDashboard() {
   useEffect(() => {
     loadSessions()
   }, [loadSessions])
+
+  const visibleDays = useMemo(() => {
+    return days.filter((d) => getDayGroupView(d) === sessionView)
+  }, [days, sessionView])
 
   // Extension count auto update
   const loadExtCount = useCallback(async () => {
@@ -212,7 +230,7 @@ export function AdminDashboard() {
             <UserCheck className="h-4 w-4" /> Pengajar & Admin
           </TabsTrigger>
           <TabsTrigger value="attendees" className="gap-1.5 font-medium">
-            <BarChart3 className="h-4 w-4" /> Lihat Peserta per Sesi
+            <BarChart3 className="h-4 w-4" /> Kehadiran Siswa
           </TabsTrigger>
           <TabsTrigger value="extensions" className="gap-1.5 font-medium relative">
             <MailCheck className="h-4 w-4" /> Permintaan Kuota
@@ -253,18 +271,37 @@ export function AdminDashboard() {
             </div>
           </div>
 
+          <div className="flex flex-wrap gap-2">
+            {(['upcoming', 'today', 'past'] as const).map((mode) => (
+              <Button
+                key={mode}
+                type="button"
+                size="sm"
+                variant={sessionView === mode ? 'default' : 'outline'}
+                onClick={() => setSessionView(mode)}
+                className="h-8"
+              >
+                {mode === 'upcoming' && 'Sesi Akan Datang'}
+                {mode === 'today' && 'Sesi Hari Ini'}
+                {mode === 'past' && 'Sesi Lampau'}
+              </Button>
+            ))}
+          </div>
+
           {loadingSessions ? (
             <div className="flex h-40 items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-          ) : days.length === 0 ? (
+          ) : visibleDays.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/60 py-12 text-center text-sm text-muted-foreground">
               <Calendar className="mx-auto mb-2 h-8 w-8 opacity-40" />
-              Belum ada sesi terjadwal. Klik tombol &quot;Unggah Excel Jadwal Mingguan&quot; di atas.
+              {sessionView === 'upcoming' && 'Belum ada sesi yang akan datang.'}
+              {sessionView === 'today' && 'Belum ada sesi untuk hari ini.'}
+              {sessionView === 'past' && 'Belum ada sesi lampau.'}
             </div>
           ) : (
             <div className="space-y-4">
-              {days.map((d) => (
+              {visibleDays.map((d) => (
                 <Card key={d.dayKey} className="border-border/60">
                   <CardContent className="p-4">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -322,6 +359,9 @@ export function AdminDashboard() {
                                     Tutup Sesi
                                   </Button>
                                 )}
+                                <Button size="sm" variant="outline" className="h-6 px-1.5 text-[10px]" onClick={() => { setSelectedSession(s); setTab('attendees') }}>
+                                  <Users className="h-3 w-3" /> Lihat Kehadiran
+                                </Button>
                                 <Button size="sm" variant="ghost" className="h-6 w-6 px-0 text-muted-foreground hover:text-primary" onClick={() => openEditSession(s)}>
                                   <Edit3 className="h-3 w-3" />
                                 </Button>
@@ -346,14 +386,14 @@ export function AdminDashboard() {
           <StaffManage />
         </TabsContent>
 
-        {/* Tab 4: Lihat Peserta per Sesi */}
+        {/* Tab 4: Kehadiran Siswa */}
         <TabsContent value="attendees" className="animate-fade-in space-y-4">
           <div className="space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-bold">Monitor Peserta per Sesi</h2>
+                <h2 className="text-lg font-bold">Kehadiran Siswa per Sesi</h2>
                 <p className="text-sm text-muted-foreground">
-                  Pilih sesi kelas untuk melihat daftar nama siswa yang telah booking dan status kuota terisi.
+                  Pilih sesi kelas untuk mengelola kehadiran siswa, menandai hadir/izin, serta memantau status kuota terisi.
                 </p>
               </div>
             </div>

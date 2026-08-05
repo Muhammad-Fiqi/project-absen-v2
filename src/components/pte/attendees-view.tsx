@@ -81,7 +81,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
   const [data, setData] = useState<{ attendees: Attendee[]; session: { title: string; sessionNumber: number; status: string } } | null>(null)
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
-  const [viewMode, setViewMode] = useState<'all' | 'attended'>('all')
+  const [viewMode, setViewMode] = useState<'all' | 'attended'>('attended')
 
   // Izin dialog state
   const [izinOpen, setIzinOpen] = useState(false)

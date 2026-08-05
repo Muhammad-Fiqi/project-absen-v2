@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import {
   Calendar, Plus, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck, Layers,
 } from 'lucide-react'
@@ -57,6 +57,19 @@ const STATUS_STYLE: Record<string, { label: string; cls: string; icon: typeof Cl
   cancelled: { label: 'Dibatalkan', cls: 'bg-destructive/10 text-destructive border-destructive/30', icon: AlertCircle },
 }
 
+type SessionViewMode = 'upcoming' | 'today' | 'past'
+
+function getDayGroupView(day: DayGroup): SessionViewMode {
+  const dayDate = new Date(day.date)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dayStart = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate())
+
+  if (dayStart < today) return 'past'
+  if (dayStart.getTime() === today.getTime()) return 'today'
+  return 'upcoming'
+}
+
 export function TeacherDashboard() {
   const [days, setDays] = useState<DayGroup[]>([])
   const [loading, setLoading] = useState(true)
@@ -64,6 +77,7 @@ export function TeacherDashboard() {
   const [createOpen, setCreateOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [tab, setTab] = useState('sessions')
+  const [sessionView, setSessionView] = useState<SessionViewMode>('today')
   const [pendingExtCount, setPendingExtCount] = useState(0)
 
   const loadSessions = useCallback(async () => {
@@ -167,7 +181,14 @@ export function TeacherDashboard() {
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
             </div>
           ) : (
-            <SessionsByDay days={days} selectedId={selectedSession?.id} onSelect={(s) => { setSelectedSession(s); setTab('attendees') }} onUpdateStatus={updateStatus} />
+            <SessionsByDay
+              days={days}
+              viewMode={sessionView}
+              onViewModeChange={setSessionView}
+              selectedId={selectedSession?.id}
+              onSelect={(s) => { setSelectedSession(s); setTab('attendees') }}
+              onUpdateStatus={updateStatus}
+            />
           )}
         </TabsContent>
 
@@ -248,13 +269,19 @@ function SessionInfoBar({ session, children }: { session: SessionItem; children?
 }
 
 function SessionsByDay({
-  days, selectedId, onSelect, onUpdateStatus,
+  days, viewMode, onViewModeChange, selectedId, onSelect, onUpdateStatus,
 }: {
   days: DayGroup[]
+  viewMode: SessionViewMode
+  onViewModeChange: (mode: SessionViewMode) => void
   selectedId?: string
   onSelect: (s: SessionItem) => void
   onUpdateStatus: (id: string, status: string) => void
 }) {
+  const visibleDays = useMemo(() => {
+    return days.filter((d) => getDayGroupView(d) === viewMode)
+  }, [days, viewMode])
+
   if (days.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border/60 py-12 text-center text-sm text-muted-foreground">
@@ -263,10 +290,35 @@ function SessionsByDay({
       </div>
     )
   }
+
   const todayKey = new Date().toISOString().slice(0, 10)
   return (
     <div className="space-y-4">
-      {days.map((d) => {
+      <div className="flex flex-wrap gap-2">
+        {(['upcoming', 'today', 'past'] as const).map((mode) => (
+          <Button
+            key={mode}
+            type="button"
+            size="sm"
+            variant={viewMode === mode ? 'default' : 'outline'}
+            onClick={() => onViewModeChange(mode)}
+            className="h-8"
+          >
+            {mode === 'upcoming' && 'Sesi Akan Datang'}
+            {mode === 'today' && 'Sesi Hari Ini'}
+            {mode === 'past' && 'Sesi Lampau'}
+          </Button>
+        ))}
+      </div>
+      {visibleDays.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border/60 py-12 text-center text-sm text-muted-foreground">
+          <Calendar className="mx-auto mb-2 h-8 w-8 opacity-40" />
+          {viewMode === 'upcoming' && 'Belum ada sesi yang akan datang.'}
+          {viewMode === 'today' && 'Belum ada sesi untuk hari ini.'}
+          {viewMode === 'past' && 'Belum ada sesi lampau.'}
+        </div>
+      ) : null}
+      {visibleDays.map((d) => {
         const isToday = d.dayKey === todayKey
         const isPast = new Date(d.date).getTime() < new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime()
         const offlineCount = d.sessions.filter((s) => s.mode === 'offline').length
