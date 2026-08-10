@@ -246,7 +246,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
       </Card>
 
       {/* Calendar heatmap */}
-      <div className="mb-6">
+      <div className="mb-6 hidden">
         <AttendanceCalendar />
       </div>
 
@@ -527,6 +527,7 @@ function DayGroupCard({
                   <span className="shrink-0 text-[10px] text-muted-foreground/60">{s.checkInWindow.message}</span>
                 )}
               </div>
+              
             )
           })}
         </div>
