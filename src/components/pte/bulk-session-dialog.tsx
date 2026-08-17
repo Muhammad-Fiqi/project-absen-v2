@@ -48,6 +48,7 @@ function generateId() {
 
 const SPREADSHEET_TEMPLATE = {
   offline: [
+    { startTime: '07:00', endTime: '08:30', teacher: 'Mr Faisal', platform: 'Office', room: 'Office' },
     { startTime: '08:30', endTime: '10:00', teacher: 'Mr Faisal', platform: 'Office', room: 'Office' },
     { startTime: '10:00', endTime: '11:30', teacher: 'Mr Faisal', platform: 'Office', room: 'Office' },
     { startTime: '11:30', endTime: '13:00', teacher: 'Mr Dimas', platform: 'Office', room: 'Office' },
@@ -56,7 +57,7 @@ const SPREADSHEET_TEMPLATE = {
   ] as const,
   online: [
     { startTime: '05:00', endTime: '06:00', teacher: 'Mr Dimas', platform: 'Google Meet', room: '' },
-    { startTime: '07:00', endTime: '08:00', teacher: 'Mr Faisal', platform: 'Discord', room: '' },
+    { startTime: '12:30', endTime: '14:00', teacher: 'Mr Faisal', platform: 'Discord', room: '' },
     { startTime: '20:00', endTime: '21:00', teacher: 'Mr Faisal', platform: 'Discord', room: '' }
   ] as const,
 }
