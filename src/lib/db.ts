@@ -1,7 +1,19 @@
 import { drizzle } from 'drizzle-orm/libsql'
 import { createClient, type Client } from '@libsql/client'
 
-import { adminUser, attendance, course, extensionRequest, quotaExtension, qrToken, session, student } from '@/db/schema'
+import {
+  adminUser,
+  attendance,
+  course,
+  extensionRequest,
+  quotaDailyUsage,
+  quotaExcuse,
+  quotaExtension,
+  qrToken,
+  session,
+  student,
+  studentLeaveRequest,
+} from '@/db/schema'
 
 // Drizzle expects libsql client for Turso/libsql URLs.
 // For local dev we still use SQLite file via file:db/custom.db.
@@ -25,6 +37,9 @@ function createDb() {
       attendance,
       qrToken,
       quotaExtension,
+      quotaDailyUsage,
+      quotaExcuse,
+      studentLeaveRequest,
       extensionRequest,
     },
   })

@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { adminUser, attendance, student } from '@/db/schema'
+import { adminUser, quotaDailyUsage, student } from '@/db/schema'
 import type { StudentInfo, TeacherInfo } from '@/lib/types'
 
 const STUDENT_COOKIE = 'pte_student'
@@ -110,11 +110,11 @@ export async function getCurrentStudent(): Promise<StudentInfo | null> {
   if (!s) return null
 
   // Compute usage to fill StudentInfo shape expected by frontend.
-  // Keep this lightweight; counts verified attendances.
+  // Daily quota reduction is tracked separately from attendance; a student is charged once per day.
   const [usedRow] = await db
     .select({ n: count() })
-    .from(attendance)
-    .where(eq(attendance.studentId, s.id))
+    .from(quotaDailyUsage)
+    .where(eq(quotaDailyUsage.studentId, s.id))
   const sessionsUsed = Number(usedRow?.n ?? 0)
   const sessionsRemaining = Math.max(0, s.sessionQuota - sessionsUsed)
 

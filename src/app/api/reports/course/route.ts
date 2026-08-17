@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { course, session, student, attendance } from '@/db/schema'
+import { course, session, student, attendance, quotaDailyUsage } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -41,12 +41,20 @@ export async function GET(req: NextRequest) {
   }
   const verifiedAttendances = attendances.filter((a) => a.verified)
 
+  // Quota usage comes from the daily-reduction model (QuotaDailyUsage), not attendance.
+  const allUsage = await db.select().from(quotaDailyUsage)
+  const usageByStudent = new Map<string, number>()
+  for (const u of allUsage) {
+    usageByStudent.set(u.studentId, (usageByStudent.get(u.studentId) ?? 0) + 1)
+  }
+  const getUsage = (studentId: string) => usageByStudent.get(studentId) ?? 0
+
   // Per-student summary (with quota)
   const perStudent = students.map((st) => {
     const atts = verifiedAttendances.filter((a) => a.studentId === st.id)
     const present = atts.filter((a) => a.status === 'present').length
     const late = atts.filter((a) => a.status === 'late').length
-    const used = atts.length
+    const used = getUsage(st.id)
     const remaining = Math.max(0, st.sessionQuota - used)
     const uniqueDays = new Set(atts.map((a) => a.dayKey)).size
     return {
@@ -93,15 +101,11 @@ export async function GET(req: NextRequest) {
   const totalPresent = verifiedAttendances.filter((a) => a.status === 'present').length
   const totalLate = verifiedAttendances.filter((a) => a.status === 'late').length
   const totalQuota = students.reduce((sum, s) => sum + s.sessionQuota, 0)
-  const totalUsed = verifiedAttendances.length
+  const totalUsed = students.reduce((sum, s) => sum + getUsage(s.id), 0)
   const quotaUsagePct = totalQuota > 0 ? Math.round((totalUsed / totalQuota) * 100) : 0
-  const studentsExhausted = students.filter((s) => {
-    const used = verifiedAttendances.filter((a) => a.studentId === s.id).length
-    return used >= s.sessionQuota
-  }).length
+  const studentsExhausted = students.filter((s) => getUsage(s.id) >= s.sessionQuota).length
   const studentsExpiring = students.filter((s) => {
-    const used = verifiedAttendances.filter((a) => a.studentId === s.id).length
-    const remaining = s.sessionQuota - used
+    const remaining = s.sessionQuota - getUsage(s.id)
     return remaining > 0 && remaining <= 2
   }).length
 

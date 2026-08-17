@@ -296,7 +296,7 @@ export function AttendanceCalendar() {
         <CardContent>
           {loading ? (
             <div className="space-y-6">
-              {[1, 2, 3].map((i) => (
+              {[1].map((i) => (
                 <div key={i} className="space-y-2">
                   <Skeleton className="h-5 w-32" />
                   <div className="grid grid-cols-7 gap-1.5">

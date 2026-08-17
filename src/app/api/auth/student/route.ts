@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { student, course, attendance } from '@/db/schema'
+import { student, course, quotaDailyUsage } from '@/db/schema'
 import { applyStudentCookie } from '@/lib/auth'
+import { applyDailyQuotaDeduction, yesterdayKey } from '@/lib/quota'
 
 export const runtime = 'nodejs'
 
@@ -38,11 +39,14 @@ export async function POST(req: NextRequest) {
       courseName = courseRows[0]?.name ?? null
     }
 
-    // Compute usage for StudentInfo
+    // Quota is only charged for days that have fully passed (yesterday and
+    // earlier) — today is never charged on the same day it occurs.
+    await applyDailyQuotaDeduction(studentRow.id, yesterdayKey())
+
     const [usedRow] = await db
       .select({ n: count() })
-      .from(attendance)
-      .where(eq(attendance.studentId, studentRow.id))
+      .from(quotaDailyUsage)
+      .where(eq(quotaDailyUsage.studentId, studentRow.id))
     const sessionsUsed = Number(usedRow?.n ?? 0)
     const sessionsRemaining = Math.max(0, studentRow.sessionQuota - sessionsUsed)
 

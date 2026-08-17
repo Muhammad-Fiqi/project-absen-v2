@@ -107,6 +107,36 @@ export async function ensureDummyTables() {
       "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     );
 
+    CREATE TABLE IF NOT EXISTS "QuotaDailyUsage" (
+      "id" TEXT PRIMARY KEY,
+      "studentId" TEXT NOT NULL,
+      "dateKey" TEXT NOT NULL,
+      "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+      UNIQUE("studentId", "dateKey")
+    );
+
+    CREATE TABLE IF NOT EXISTS "QuotaExcuse" (
+      "id" TEXT PRIMARY KEY,
+      "studentId" TEXT NOT NULL,
+      "dateKey" TEXT NOT NULL,
+      "reason" TEXT,
+      "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+      UNIQUE("studentId", "dateKey")
+    );
+
+    CREATE TABLE IF NOT EXISTS "StudentLeaveRequest" (
+      "id" TEXT PRIMARY KEY,
+      "studentId" TEXT NOT NULL,
+      "reason" TEXT NOT NULL,
+      "startDate" TEXT NOT NULL,
+      "endDate" TEXT NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'pending',
+      "reviewedById" TEXT,
+      "reviewedAt" TEXT,
+      "reviewNote" TEXT,
+      "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );
+
     CREATE TABLE IF NOT EXISTS "ExtensionRequest" (
       "id" TEXT PRIMARY KEY,
       "studentId" TEXT NOT NULL,

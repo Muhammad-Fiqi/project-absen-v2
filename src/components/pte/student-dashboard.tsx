@@ -30,20 +30,50 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { apiGet } from '@/lib/api-client'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { apiGet, apiPost } from '@/lib/api-client'
 import { AttendanceFlow } from './attendance-flow'
 import { RequestExtension } from './request-extension'
+import { LeaveRequestDialog } from './leave-request-dialog'
 import { AttendanceCalendar } from './attendance-calendar'
 import { SessionCapacity } from './session-capacity'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
 import type { StudentDashboard as StudentDashboardData, DayGroup } from '@/lib/types'
 
+// YYYY-MM-DD key in LOCAL time (matches server-side dayKey())
+function todayKeyLocal(): string {
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
 interface ExtensionRequestRow {
   id: string
   requestedSessions: number
   reason: string
   status: 'pending' | 'approved' | 'denied'
+  reviewedAt: string | null
+  reviewNote: string | null
+  createdAt: string
+}
+
+interface LeaveRequestRow {
+  id: string
+  reason: string
+  startDate: string
+  endDate: string
+  status: 'pending' | 'approved' | 'rejected'
   reviewedAt: string | null
   reviewNote: string | null
   createdAt: string
@@ -60,6 +90,11 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
   const [extOpen, setExtOpen] = useState(false)
   const [extRequests, setExtRequests] = useState<ExtensionRequestRow[]>([])
   const [extLoading, setExtLoading] = useState(false)
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequestRow[]>([])
+  const [leaveLoading, setLeaveLoading] = useState(false)
+  const [excuseLoading, setExcuseLoading] = useState(false)
+  const [excuseConfirmOpen, setExcuseConfirmOpen] = useState(false)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
 
   const loadExtRequests = useCallback(async () => {
@@ -78,6 +113,22 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
     loadExtRequests()
   }, [loadExtRequests])
 
+  const loadLeaveRequests = useCallback(async () => {
+    setLeaveLoading(true)
+    try {
+      const res = await apiGet<{ requests: LeaveRequestRow[] }>('/api/student/leave-requests')
+      setLeaveRequests(res.requests)
+    } catch {
+      // Silent fail
+    } finally {
+      setLeaveLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadLeaveRequests()
+  }, [loadLeaveRequests])
+
   async function refresh() {
     setRefreshing(true)
     try {
@@ -88,6 +139,34 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
     } finally {
       setRefreshing(false)
     }
+  }
+
+  function requestExcuse() {
+    if ((data.quotaExcuseRemaining ?? 0) <= 0) {
+      toast.error('Batas izin harian sudah habis (maksimal 5 kali)')
+      return
+    }
+    setExcuseConfirmOpen(true)
+  }
+
+  async function applyExcuse() {
+    setExcuseLoading(true)
+    try {
+      const res = await apiPost<{ success: boolean; remaining: number; used: number }>('/api/student/excuses', {
+        dateKey: todayKeyLocal(),
+        reason: 'Izin harian untuk mengecualikan kuota hari ini',
+      })
+      toast.success(`Izin dicatat. Sisa izin: ${res.remaining}/5`)
+      await refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengirim izin')
+    } finally {
+      setExcuseLoading(false)
+    }
+  }
+
+  async function requestLeaveClass() {
+    setLeaveDialogOpen(true)
   }
 
   const { student, course, quota, stats, today, upcomingDays, recentDays } = data
@@ -109,12 +188,29 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing} className="gap-1.5">
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={requestExcuse} disabled={excuseLoading || (data.quotaExcuseRemaining ?? 0) <= 0} className="gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {excuseLoading ? 'Memproses...' : 'Izin'}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={requestLeaveClass} className="gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Ajukan Permintaan Cuti Kelas
+            </Button>
+            <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing} className="gap-1.5">
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
       </div>
+
+      {typeof data.quotaExcuseRemaining === 'number' && (
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-700 dark:border-purple-800 dark:bg-purple-950/20 dark:text-purple-200">
+          <span className="font-medium">Sisa izin: {data.quotaExcuseRemaining}/{5}</span>
+          <Badge variant="outline" className="border-purple-300 bg-transparent text-purple-700 dark:text-purple-200">Izin harian</Badge>
+        </div>
+      )}
 
       {/* QUOTA BANNER — most important */}
       {quota.exhausted ? (
@@ -246,7 +342,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
       </Card>
 
       {/* Calendar heatmap */}
-      <div className="mb-6 hidden">
+      <div className="mb-6">
         <AttendanceCalendar />
       </div>
 
@@ -334,12 +430,63 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
         }}
       />
 
+      <LeaveRequestDialog
+        open={leaveDialogOpen}
+        onOpenChange={setLeaveDialogOpen}
+        onSubmitted={() => {
+          loadLeaveRequests()
+          refresh()
+        }}
+      />
+
+      {/* Izin confirmation — prevents accidental excuse submissions */}
+      <AlertDialog open={excuseConfirmOpen} onOpenChange={setExcuseConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Izin</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin melakukan izin hari ini? Kesempatan izin akan dikurangi 1 dan tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excuseLoading}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={excuseLoading}
+              onClick={(e) => {
+                e.preventDefault()
+                applyExcuse()
+                setExcuseConfirmOpen(false)
+              }}
+              className="gap-1.5"
+            >
+              {excuseLoading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Memproses...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-3.5 w-3.5" /> Ya, Saya Yakin
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Extension requests history (bottom section) */}
       <ExtensionRequestsSection
         requests={extRequests}
         loading={extLoading}
         onReload={loadExtRequests}
         onRequestNew={() => setExtOpen(true)}
+      />
+
+      {/* Leave request history (bottom section) */}
+      <LeaveRequestsSection
+        requests={leaveRequests}
+        loading={leaveLoading}
+        onReload={loadLeaveRequests}
+        onRequestNew={() => setLeaveDialogOpen(true)}
       />
     </div>
   )
@@ -613,6 +760,99 @@ function ExtensionRequestsSection({
                         <span className="text-[10px] text-muted-foreground">
                           {new Date(r.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
                         </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{r.reason}</p>
+                      {r.reviewNote && (
+                        <p className="mt-1 rounded bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">
+                          <strong>Catatan pengajar:</strong> {r.reviewNote}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function LeaveRequestsSection({
+  requests,
+  loading,
+  onReload,
+  onRequestNew,
+}: {
+  requests: LeaveRequestRow[]
+  loading: boolean
+  onReload: () => void
+  onRequestNew: () => void
+}) {
+  const pending = requests.filter((r) => r.status === 'pending').length
+  const approved = requests.filter((r) => r.status === 'approved').length
+  const rejected = requests.filter((r) => r.status === 'rejected').length
+
+  const statusMeta: Record<LeaveRequestRow['status'], { label: string; cls: string; icon: typeof Clock }> = {
+    pending: { label: 'Menunggu', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300/40', icon: Clock },
+    approved: { label: 'Disetujui', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300/40', icon: CheckCircle2 },
+    rejected: { label: 'Ditolak', cls: 'bg-destructive/10 text-destructive border-destructive/30', icon: X },
+  }
+
+  return (
+    <Card className="mt-6 border-border/60 transition-transform hover:-translate-y-0.5">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            Pengajuan Cuti Kelas
+          </CardTitle>
+          <Button size="sm" variant="outline" onClick={onRequestNew} className="gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" /> Ajukan Cuti
+          </Button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline" className="gap-1 border-amber-300/40 bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+            <Clock className="h-3 w-3" /> {pending} menunggu
+          </Badge>
+          <Badge variant="outline" className="gap-1 border-emerald-300/40 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <CheckCircle2 className="h-3 w-3" /> {approved} disetujui
+          </Badge>
+          <Badge variant="outline" className="gap-1 border-destructive/30 bg-destructive/10 text-destructive">
+            <X className="h-3 w-3" /> {rejected} ditolak
+          </Badge>
+          <Button size="sm" variant="ghost" onClick={onReload} disabled={loading} className="h-6 gap-1 px-2 text-[10px]">
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border/60 py-8 text-center">
+            <CalendarDays className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Belum ada pengajuan cuti kelas.</p>
+            <p className="mt-1 text-xs text-muted-foreground/80">Klik &quot;Ajukan Cuti&quot; untuk meminta periode cuti yang mengecualikan kuota harian Anda.</p>
+          </div>
+        ) : (
+          <div className="max-h-72 space-y-2 overflow-y-auto scrollbar-thin">
+            {requests.map((r) => {
+              const meta = statusMeta[r.status]
+              return (
+                <div key={r.id} className="rounded-xl border border-border/60 p-3 transition-colors hover:bg-muted/30">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className={`gap-1 text-[10px] ${meta.cls}`}>
+                          <meta.icon className="h-3 w-3" /> {meta.label}
+                        </Badge>
+                        <span className="text-sm font-semibold">{r.startDate} s/d {r.endDate}</span>
                       </div>
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{r.reason}</p>
                       {r.reviewNote && (

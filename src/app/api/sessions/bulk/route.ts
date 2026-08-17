@@ -129,7 +129,8 @@ export async function POST(req: NextRequest) {
           teacher: s.teacher || null,
           topicOfDay: topicOfDay || null,
           maxAttendees: s.maxAttendees ?? globalMaxAttendees ?? 10,
-          status: 'scheduled',
+          // Sesi langsung 'active' begitu dibuat — siswa bisa absen kapan saja sebelum status 'completed'.
+          status: 'active',
           qrSecret: generateQrSecret(),
           notes: s.notes || null,
           createdById: teacher.id,

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { session, course, attendance, student } from '@/db/schema'
+import { session, course, attendance, student, quotaDailyUsage } from '@/db/schema'
 import { getCurrentStudent } from '@/lib/auth'
 import { verifyQrPayload, verifyRotatingCode } from '@/lib/security'
 import type { AttendanceSubmitRequest, AttendanceSubmitResponse } from '@/lib/types'
 import { newId } from '@/lib/id'
+import { hasApprovedLeaveForDate, hasValidExcuseForDate } from '@/lib/quota'
 
 export const runtime = 'nodejs'
 
@@ -78,15 +79,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const now = new Date()
   const checks: AttendanceSubmitResponse['checks'] = {}
+  const sessionDateKey = dayKey(new Date(sessionRow.date))
 
   // === QUOTA CHECK ===
-  const [usedCountRow] = await db
+  const [dailyUsageRow] = await db
     .select({ n: count() })
-    .from(attendance)
-    .where(and(eq(attendance.studentId, studentSess.id), eq(attendance.verified, 1)))
-  const verifiedCount = Number(usedCountRow?.n ?? 0)
-  const remaining = Math.max(0, fullStudent.sessionQuota - verifiedCount)
-  const quotaOk = remaining > 0
+    .from(quotaDailyUsage)
+    .where(eq(quotaDailyUsage.studentId, studentSess.id))
+  const dailyUsageCount = Number(dailyUsageRow?.n ?? 0)
+  const remaining = Math.max(0, fullStudent.sessionQuota - dailyUsageCount)
+  const hasLeave = await hasApprovedLeaveForDate(studentSess.id, sessionDateKey)
+  const hasExcuse = await hasValidExcuseForDate(studentSess.id, sessionDateKey)
+  const quotaOk = hasLeave || hasExcuse || remaining > 0
   checks.quota = {
     passed: quotaOk,
     reason: quotaOk ? undefined : `Kuota sesi Anda habis (${fullStudent.sessionQuota}/${fullStudent.sessionQuota}). Silakan perpanjang/extend ke pengajar.`,
@@ -97,7 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       success: false,
       status: 'absent',
       verified: false,
-      message: `Kuota sesi habis (${verifiedCount}/${fullStudent.sessionQuota}). Hubungi pengajar untuk perpanjang kuota.`,
+      message: `Kuota sesi habis (${dailyUsageCount}/${fullStudent.sessionQuota}). Hubungi pengajar untuk perpanjang kuota.`,
       checks,
       quotaRemaining: 0,
     }
@@ -148,13 +152,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // === TIME WINDOW CHECK ===
   const startTime = new Date(sessionRow.startTime)
   const endTime = new Date(sessionRow.endTime)
-  const opensAt = new Date(startTime.getTime() - courseRow.graceMinutesBefore * 60 * 1000)
-  const closesAt = new Date(endTime.getTime() + courseRow.graceMinutesAfter * 60 * 1000)
-  const inTimeWindow = now.getTime() >= opensAt.getTime() && now.getTime() <= closesAt.getTime()
-  const timeOpen = sessionRow.status === 'active' ? true : inTimeWindow
+  // Sejak sesi dibuat, siswa bisa absen kapan saja selama sesi belum 'completed'/'cancelled'.
+  const timeOpen = sessionRow.status !== 'completed' && sessionRow.status !== 'cancelled'
   let isLate = false
   if (!timeOpen) {
-    checks.time = { passed: false, reason: now.getTime() < opensAt.getTime() ? 'Absensi belum dibuka' : 'Absensi sudah ditutup' }
+    checks.time = {
+      passed: false,
+      reason: sessionRow.status === 'cancelled' ? 'Sesi dibatalkan' : 'Sesi sudah selesai',
+    }
   } else {
     isLate = now.getTime() > startTime.getTime() + 5 * 60 * 1000
     checks.time = { passed: true }
@@ -210,7 +215,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     })
     .returning()
 
-  const newRemaining = verified ? remaining - 1 : remaining
+  const newRemaining = remaining
   const response: AttendanceSubmitResponse = {
     success: verified,
     status: verified ? status : 'absent',

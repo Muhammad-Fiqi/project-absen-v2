@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { and, count, eq, gte, lt } from 'drizzle-orm'
+import { and, count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { session, course, attendance, student } from '@/db/schema'
+import { session, course, attendance, student, quotaDailyUsage } from '@/db/schema'
 import { getCurrentStudent } from '@/lib/auth'
+import { applyDailyQuotaDeduction, hasApprovedLeaveForDate, hasValidExcuseForDate } from '@/lib/quota'
 import { newId } from '@/lib/id'
 
 export const runtime = 'nodejs'
@@ -51,25 +52,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const now = new Date()
     const sessionDate = new Date(sessionRow.date)
-    const sessionStartTime = new Date(sessionRow.startTime)
-    const sessionEndTime = new Date(sessionRow.endTime)
     const dayKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}-${String(sessionDate.getDate()).padStart(2, '0')}`
+
+    // Process daily quota reduction (catch-up) before checking quota below.
+    await applyDailyQuotaDeduction(studentSess.id, dayKey)
 
 // === BASIC VALIDATIONS ===
 
-    // 1. Check time window — if session is ACTIVE, allow anytime; otherwise enforce grace window
-    if (sessionRow.status !== 'active') {
-      const opensAt = new Date(sessionStartTime.getTime() - courseRow.graceMinutesBefore * 60 * 1000)
-      const closesAt = new Date(sessionEndTime.getTime() + courseRow.graceMinutesAfter * 60 * 1000)
-      const isWithinTimeWindow = now.getTime() >= opensAt.getTime() && now.getTime() <= closesAt.getTime()
-      
-      if (!isWithinTimeWindow) {
-        return NextResponse.json({
-          success: false,
-          status: 'absent',
-          message: `Waktu absensi belum dibuka atau sudah ditutup. Silakan datang sesuai jadwal.`,
-        }, { status: 403 })
-      }
+    // 1. Check session still open — sejak sesi dibuat siswa boleh absen kapan saja
+    //    sebelum status sesi 'completed'/'cancelled' (tidak dibatasi window waktu).
+    if (sessionRow.status === 'completed' || sessionRow.status === 'cancelled') {
+      return NextResponse.json({
+        success: false,
+        status: 'absent',
+        message: sessionRow.status === 'cancelled'
+          ? 'Sesi ini dibatalkan. Tidak bisa absen.'
+          : 'Sesi sudah selesai (completed). Tidak bisa absen lagi.',
+      }, { status: 403 })
     }
 
     // 2. Check if student already attended today (one session per day)
@@ -93,15 +92,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }, { status: 409 })
     }
 
-    // 3. Check quota
-    const [usedCountRow] = await db
+    // 3. Check quota — usage is counted from QuotaDailyUsage (daily model), NOT from Attendance.
+    const [dailyUsageRow] = await db
       .select({ n: count() })
-      .from(attendance)
-      .where(and(eq(attendance.studentId, studentSess.id), eq(attendance.verified, 1)))
-    const verifiedCount = Number(usedCountRow?.n ?? 0)
-    const remaining = Math.max(0, fullStudent.sessionQuota - verifiedCount)
-    
-    if (remaining <= 0) {
+      .from(quotaDailyUsage)
+      .where(eq(quotaDailyUsage.studentId, studentSess.id))
+    const dailyUsageCount = Number(dailyUsageRow?.n ?? 0)
+    const remaining = Math.max(0, fullStudent.sessionQuota - dailyUsageCount)
+    const hasLeave = await hasApprovedLeaveForDate(studentSess.id, dayKey)
+    const hasExcuse = await hasValidExcuseForDate(studentSess.id, dayKey)
+
+    if (remaining <= 0 && !hasLeave && !hasExcuse) {
 return NextResponse.json({
   success: false,
   status: 'absent',
@@ -140,7 +141,8 @@ return NextResponse.json({
       })
       .returning()
 
-    const newRemaining = remaining - 1
+    // Attendance does NOT consume quota in the daily model — remaining stays as-is.
+    const newRemaining = remaining
     
     return NextResponse.json({
       success: true,

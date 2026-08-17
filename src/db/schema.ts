@@ -109,6 +109,46 @@ export const quotaExtension = sqliteTable('QuotaExtension', {
   createdAt: text('createdAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
 })
 
+export const quotaDailyUsage = sqliteTable(
+  'QuotaDailyUsage',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('studentId').notNull(),
+    dateKey: text('dateKey').notNull(),
+    createdAt: text('createdAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (t) => ({
+    uniqueStudentDay: uniqueIndex('QuotaDailyUsage_student_day_unique').on(t.studentId, t.dateKey),
+  })
+)
+
+export const quotaExcuse = sqliteTable(
+  'QuotaExcuse',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('studentId').notNull(),
+    dateKey: text('dateKey').notNull(),
+    reason: text('reason'),
+    createdAt: text('createdAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (t) => ({
+    uniqueStudentDay: uniqueIndex('QuotaExcuse_student_day_unique').on(t.studentId, t.dateKey),
+  })
+)
+
+export const studentLeaveRequest = sqliteTable('StudentLeaveRequest', {
+  id: text('id').primaryKey(),
+  studentId: text('studentId').notNull(),
+  reason: text('reason').notNull(),
+  startDate: text('startDate').notNull(),
+  endDate: text('endDate').notNull(),
+  status: text('status').notNull().default('pending'),
+  reviewedById: text('reviewedById'),
+  reviewedAt: text('reviewedAt'),
+  reviewNote: text('reviewNote'),
+  createdAt: text('createdAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
+})
+
 export const extensionRequest = sqliteTable('ExtensionRequest', {
   id: text('id').primaryKey(),
   studentId: text('studentId').notNull(),

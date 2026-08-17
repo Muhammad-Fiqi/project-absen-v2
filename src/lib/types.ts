@@ -94,6 +94,18 @@ export interface DayGroup {
   }>
 }
 
+export interface AttendanceSubmitRequest {
+  qr?: { sessionId: string; token: string; ts?: number; window?: number }
+  code?: string
+}
+
+export interface QrPayload {
+  sessionId: string
+  token: string
+  ts?: number
+  window?: number
+}
+
 export interface StudentDashboard {
   student: StudentInfo
   course: {
@@ -110,6 +122,8 @@ export interface StudentDashboard {
     expiringSoon: boolean
     extendedAt: string | null
   }
+  quotaExcuseUsed?: number
+  quotaExcuseRemaining?: number
   stats: {
     present: number
     late: number
@@ -132,6 +146,8 @@ export interface AttendanceSubmitResponse {
     quota?: { passed: boolean; reason?: string; remaining?: number }
     daily?: { passed: boolean; reason?: string; attendedSession?: string }
     capacity?: { passed: boolean; reason?: string }
+    qr?: { passed: boolean; reason?: string }
+    code?: { passed: boolean; reason?: string }
   }
   quotaRemaining?: number
 }

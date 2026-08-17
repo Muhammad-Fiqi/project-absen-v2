@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { count, eq } from 'drizzle-orm'
+import { and, count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { student, session, course, attendance } from '@/db/schema'
+import { student, session, course, attendance, quotaDailyUsage, quotaExcuse, studentLeaveRequest } from '@/db/schema'
 import { getCurrentStudent } from '@/lib/auth'
+import { applyDailyQuotaDeduction, yesterdayKey } from '@/lib/quota'
 import type { StudentDashboard, DayGroup } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -58,11 +59,45 @@ export async function GET() {
     return NextResponse.json({ error: 'Kursus tidak ditemukan' }, { status: 404 })
   }
 
+  const todayKey = dayKey(new Date())
+  // Quota is only charged for days that have fully passed (yesterday and
+  // earlier) — today is never charged on the same day it occurs.
+  await applyDailyQuotaDeduction(studentSess.id, yesterdayKey())
+
   const sessions = await db
     .select()
     .from(session)
     .where(eq(session.courseId, courseRow.id))
     .orderBy(session.startTime)
+
+  const [dailyUsageRow] = await db
+    .select({ n: count() })
+    .from(quotaDailyUsage)
+    .where(eq(quotaDailyUsage.studentId, studentSess.id))
+  const sessionsUsed = Number(dailyUsageRow?.n ?? 0)
+  const sessionsRemaining = Math.max(0, fullStudent.sessionQuota - sessionsUsed)
+  const quotaExhausted = sessionsRemaining <= 0
+
+  const [excuseUsageRow] = await db
+    .select({ n: count() })
+    .from(quotaExcuse)
+    .where(eq(quotaExcuse.studentId, studentSess.id))
+  const excuseUsage = Number(excuseUsageRow?.n ?? 0)
+  const excuseRemaining = Math.max(0, 5 - excuseUsage)
+  const [todayExcuse] = await db
+    .select()
+    .from(quotaExcuse)
+    .where(and(eq(quotaExcuse.studentId, studentSess.id), eq(quotaExcuse.dateKey, todayKey)))
+  const [activeLeave] = await db
+    .select()
+    .from(studentLeaveRequest)
+    .where(
+      and(
+        eq(studentLeaveRequest.studentId, studentSess.id),
+        eq(studentLeaveRequest.status, 'approved')
+      )
+    )
+  const hasApprovedLeaveToday = !!activeLeave && activeLeave.startDate <= todayKey && activeLeave.endDate >= todayKey
 
   // All attendances for this student
   const attendances = await db
@@ -70,9 +105,6 @@ export async function GET() {
     .from(attendance)
     .where(eq(attendance.studentId, studentSess.id))
   const verifiedAttendances = attendances.filter((a) => a.verified)
-  const sessionsUsed = verifiedAttendances.length
-  const sessionsRemaining = Math.max(0, fullStudent.sessionQuota - sessionsUsed)
-  const quotaExhausted = sessionsRemaining <= 0
 
   // Map: dayKey -> attendance (first verified on that day)
   const attendanceByDay = new Map<string, (typeof attendances)[number]>()
@@ -101,7 +133,6 @@ export async function GET() {
   }
 
   const now = new Date()
-  const todayKey = dayKey(now)
 
   // Group sessions by day
   const dayMap = new Map<string, typeof sessions>()
@@ -130,7 +161,7 @@ export async function GET() {
       attendedSessionId,
       sessions: daySessions.map((s, index) => {
         const window = checkInWindow(s.startTime, s.endTime, courseRow.graceMinutesBefore, courseRow.graceMinutesAfter, now)
-        const effectivelyOpen = s.status === 'active' ? true : window.open
+        const effectivelyOpen = s.status !== 'completed' && s.status !== 'cancelled'
         const canCheckIn =
           effectivelyOpen &&
           s.status !== 'cancelled' &&
@@ -156,7 +187,13 @@ export async function GET() {
           checkInWindow: {
             ...window,
             open: effectivelyOpen,
-            message: s.status === 'active' && !window.open ? 'Absensi dibuka oleh pengajar' : window.message,
+            message: s.status === 'completed'
+              ? 'Sesi telah selesai'
+              : s.status === 'cancelled'
+                ? 'Sesi dibatalkan'
+                : window.open
+                  ? window.message
+                  : 'Absensi terbuka dari sekarang',
           },
         }
       }),
@@ -200,6 +237,8 @@ export async function GET() {
       expiringSoon: !quotaExhausted && sessionsRemaining <= 2,
       extendedAt: fullStudent.quotaExtendedAt,
     },
+    quotaExcuseUsed: excuseUsage,
+    quotaExcuseRemaining: excuseRemaining,
     stats: {
       present,
       late,

@@ -5,7 +5,7 @@ import {
   Calendar, Plus, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck, Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -19,6 +19,7 @@ import { AttendeesView } from './attendees-view'
 import { ReportsView } from './reports-view'
 import { StudentsManage } from './students-manage'
 import { ExtensionRequests } from './extension-requests'
+import { ExcuseReviewPanel } from './excuse-review-panel'
 import { BulkSessionDialog } from './bulk-session-dialog'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
@@ -79,20 +80,52 @@ export function TeacherDashboard() {
   const [tab, setTab] = useState('sessions')
   const [sessionView, setSessionView] = useState<SessionViewMode>('today')
   const [pendingExtCount, setPendingExtCount] = useState(0)
+  const [pendingLeaveCount, setPendingLeaveCount] = useState(0)
+  const [leaveRequests, setLeaveRequests] = useState<Array<{
+    id: string
+    studentId: string
+    studentName: string
+    studentCode: string
+    reason: string
+    startDate: string
+    endDate: string
+    status: 'pending' | 'approved' | 'rejected'
+    reviewedBy: string | null
+    reviewedAt: string | null
+    reviewNote: string | null
+    createdAt: string
+  }>>([])
+  const [leaveLoading, setLeaveLoading] = useState(false)
+  const [activeLeaves, setActiveLeaves] = useState<Array<{
+    id: string
+    studentId: string
+    studentName: string
+    studentCode: string
+    reason: string
+    startDate: string
+    endDate: string
+    status: 'approved'
+    reviewedBy: string | null
+    reviewedAt: string | null
+    reviewNote: string | null
+    createdAt: string
+    daysRemaining: number
+  }>>([])
+  const [activeLeavesLoading, setActiveLeavesLoading] = useState(false)
 
   const loadSessions = useCallback(async () => {
     setLoading(true)
     try {
       const res = await apiGet<{ sessions: SessionItem[]; days: DayGroup[] }>('/api/sessions')
       setDays(res.days)
-      // Auto-select an active session
-      const active = res.sessions.find((s) => s.status === 'active')
-      if (active && !selectedSession) setSelectedSession(active)
-      else if (!selectedSession && res.sessions[0]) {
-        // pick today's first session if any
+      // Semua sesi kini langsung 'active' saat dibuat — auto-select prioritaskan sesi
+      // hari ini yang belum selesai agar tidak terlempar ke sesi lama.
+      if (!selectedSession) {
         const todayKey = new Date().toISOString().slice(0, 10)
         const today = res.days.find((d) => d.dayKey === todayKey)
-        setSelectedSession(today?.sessions[0] || res.sessions[0])
+        const todayOpen = today?.sessions.find((s) => s.status !== 'completed')
+        const nextOpen = res.sessions.find((s) => s.status !== 'completed')
+        setSelectedSession(todayOpen || nextOpen || res.sessions[0])
       }
     } catch {
       toast.error('Gagal memuat sesi')
@@ -117,10 +150,56 @@ export function TeacherDashboard() {
     const id = setInterval(loadExtCount, 30000)
     return () => clearInterval(id)
   }, [loadExtCount])
+
+  const loadLeaveRequests = useCallback(async () => {
+    setLeaveLoading(true)
+    try {
+      const res = await apiGet<{ requests: typeof leaveRequests }>('/api/student/leave-requests?status=pending')
+      setLeaveRequests(res.requests)
+      setPendingLeaveCount(res.requests.length)
+    } catch {
+      // silent
+    } finally {
+      setLeaveLoading(false)
+    }
+  }, []) // leaveRequests tidak dipakai di dalam — tidak perlu dependency
+
+  const loadActiveLeaves = useCallback(async () => {
+    setActiveLeavesLoading(true)
+    try {
+      const res = await apiGet<{ requests: typeof activeLeaves }>('/api/student/leave-requests?active=true')
+      setActiveLeaves(res.requests)
+    } catch {
+      // silent
+    } finally {
+      setActiveLeavesLoading(false)
+    }
+  }, []) // activeLeaves tidak dipakai di dalam — tidak perlu dependency
+
+  useEffect(() => {
+    loadLeaveRequests()
+    const id = setInterval(loadLeaveRequests, 30000)
+    return () => clearInterval(id)
+  }, [loadLeaveRequests])
+
   // Also refresh count when extension tab is opened
   useEffect(() => {
     if (tab === 'extensions') loadExtCount()
-  }, [tab, loadExtCount])
+    if (tab === 'leave-requests') {
+      loadLeaveRequests()
+      loadActiveLeaves()
+    }
+  }, [tab, loadExtCount, loadLeaveRequests, loadActiveLeaves])
+
+  async function reviewLeaveRequest(id: string, action: 'approve' | 'reject') {
+    try {
+      await apiPatch(`/api/student/leave-requests/${id}/review`, { action })
+      toast.success(action === 'approve' ? 'Cuti disetujui' : 'Cuti ditolak')
+      await loadLeaveRequests()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memproses cuti')
+    }
+  }
 
   async function updateStatus(sessionId: string, status: string) {
     try {
@@ -169,6 +248,14 @@ export function TeacherDashboard() {
             {pendingExtCount > 0 && (
               <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
                 {pendingExtCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="leave-requests" className="gap-1.5 relative">
+            <CalendarDays className="h-3.5 w-3.5" /> Cuti & Izin
+            {pendingLeaveCount > 0 && (
+              <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
+                {pendingLeaveCount}
               </Badge>
             )}
           </TabsTrigger>
@@ -222,6 +309,20 @@ export function TeacherDashboard() {
           <ExtensionRequests />
         </TabsContent>
 
+        <TabsContent value="leave-requests" className="mt-0 animate-fade-in">
+          <div className="space-y-4">
+            <ExcuseReviewPanel />
+            <LeaveReviewPanel
+              requests={leaveRequests}
+              loading={leaveLoading}
+              activeLeaves={activeLeaves}
+              activeLeavesLoading={activeLeavesLoading}
+              onReview={reviewLeaveRequest}
+              onRefresh={loadLeaveRequests}
+            />
+          </div>
+        </TabsContent>
+
         <TabsContent value="reports" className="mt-0 animate-fade-in">
           <ReportsView />
         </TabsContent>
@@ -230,6 +331,145 @@ export function TeacherDashboard() {
       <CreateSessionDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={loadSessions} days={days} />
       <BulkSessionDialog open={bulkOpen} onOpenChange={setBulkOpen} onCreated={loadSessions} />
     </div>
+  )
+}
+
+function LeaveReviewPanel({
+  requests,
+  loading,
+  activeLeaves,
+  activeLeavesLoading,
+  onReview,
+  onRefresh,
+}: {
+  requests: Array<{
+    id: string
+    studentId: string
+    studentName: string
+    studentCode: string
+    reason: string
+    startDate: string
+    endDate: string
+    status: 'pending' | 'approved' | 'rejected'
+    reviewedBy: string | null
+    reviewedAt: string | null
+    reviewNote: string | null
+    createdAt: string
+  }>
+  loading: boolean
+  activeLeaves: Array<{
+    id: string
+    studentId: string
+    studentName: string
+    studentCode: string
+    reason: string
+    startDate: string
+    endDate: string
+    status: 'approved'
+    reviewedBy: string | null
+    reviewedAt: string | null
+    reviewNote: string | null
+    createdAt: string
+    daysRemaining: number
+  }>
+  activeLeavesLoading: boolean
+  onReview: (id: string, action: 'approve' | 'reject') => void
+  onRefresh: () => void
+}) {
+  const pending = requests.filter((r) => r.status === 'pending').length
+  const approved = requests.filter((r) => r.status === 'approved').length
+  const rejected = requests.filter((r) => r.status === 'rejected').length
+
+  return (
+    <Card className="border-border/60">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            Pengajuan Cuti Kelas
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="gap-1.5">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline" className="bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300/40 gap-1"><Clock className="h-3 w-3" /> {pending} pending</Badge>
+          <Badge variant="outline" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300/40 gap-1"><CheckCircle2 className="h-3 w-3" /> {approved} disetujui</Badge>
+          <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 gap-1"><AlertCircle className="h-3 w-3" /> {rejected} ditolak</Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Students currently on leave, with days remaining until they return */}
+        {activeLeaves.length > 0 && (
+          <div className="mb-4 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+              <Users className="h-3.5 w-3.5" />
+              Sedang Cuti ({activeLeaves.length})
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {activeLeaves.map((l) => (
+                <div key={l.id} className="rounded-lg border border-border/60 bg-card/80 p-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-semibold">{l.studentName}</span>
+                    <Badge variant="outline" className="shrink-0 gap-1 border-primary/40 bg-primary/10 text-primary">
+                      <Clock className="h-3 w-3" /> {l.daysRemaining} hari lagi
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{l.studentCode}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Cuti s/d {new Date(l.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {loading ? (
+          <div className="flex h-32 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+        ) : requests.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border/60 py-8 text-center text-sm text-muted-foreground">
+            Belum ada pengajuan cuti kelas.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {requests.map((r) => (
+              <div key={r.id} className="rounded-xl border border-border/60 p-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-foreground">{r.studentName}</span>
+                      <span className="text-xs text-muted-foreground">{r.studentCode}</span>
+                      <Badge variant="outline" className={r.status === 'pending' ? 'bg-amber-100 ...' : r.status === 'approved' ? 'bg-emerald-100 ...' : 'bg-destructive/10 ...'}>
+                        {r.status === 'pending' ? 'Menunggu' : r.status === 'approved' ? 'Disetujui' : 'Ditolak'}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">{r.reason}</p>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Periode: {new Date(r.startDate).toLocaleDateString('id-ID')} sampai {new Date(r.endDate).toLocaleDateString('id-ID')}
+                    </div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">
+                      Diajukan: {new Date(r.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </div>
+                  </div>
+
+                  {r.status === 'pending' && (
+                    <div className="flex shrink-0 gap-2">
+                      <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => onReview(r.id, 'approve')}>
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Setujui
+                      </Button>
+                      <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => onReview(r.id, 'reject')}>
+                        <AlertCircle className="h-3.5 w-3.5" /> Tolak
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

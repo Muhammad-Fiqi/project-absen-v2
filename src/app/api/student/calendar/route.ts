@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { and, eq, gte, lte, ne } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { student, course, session, attendance } from '@/db/schema'
+import { student, course, session, attendance, quotaExcuse, studentLeaveRequest } from '@/db/schema'
 import { getCurrentStudent } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -62,23 +62,17 @@ export async function GET() {
   const courseId = fullStudent.courseId
   const now = new Date()
 
-  // Calculate 3 month range: current month - 2 to current month
-  const months: CalendarMonth[] = []
-  for (let i = 2; i >= 0; i--) {
-    const refDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const year = refDate.getFullYear()
-    const month = refDate.getMonth()
-    months.push({
-      year,
-      month,
-      label: `${MONTH_LABELS[month]} ${year}`,
-      days: [],
-    })
-  }
+  // Only the current month (per requirement: "hanya perlihatkan pada bulan tersebut").
+  const months: CalendarMonth[] = [{
+    year: now.getFullYear(),
+    month: now.getMonth(),
+    label: `${MONTH_LABELS[now.getMonth()]} ${now.getFullYear()}`,
+    days: [],
+  }]
 
   // Date range for querying
   const startDate = new Date(months[0].year, months[0].month, 1)
-  const endDate = new Date(months[months.length - 1].year, months[months.length - 1].month + 1, 0, 23, 59, 59, 999)
+  const endDate = new Date(months[0].year, months[0].month + 1, 0, 23, 59, 59, 999)
   const startKey = dayKey(startDate)
   const endKey = dayKey(endDate)
 
@@ -118,6 +112,37 @@ export async function GET() {
     }
   }
 
+  // Excused days come from two sources:
+  // 1) Izin harian (QuotaExcuse) — a row per date.
+  // 2) Cuti kelas (approved StudentLeaveRequest) — a date range.
+  // Both mark the day as "izin" instead of "tidak hadir".
+  const excuseRows = await db
+    .select({ dateKey: quotaExcuse.dateKey, reason: quotaExcuse.reason })
+    .from(quotaExcuse)
+    .where(eq(quotaExcuse.studentId, studentSess.id))
+  const excuseByDay = new Map<string, string>()
+  for (const r of excuseRows) {
+    if (r.dateKey >= startKey && r.dateKey <= endKey) {
+      excuseByDay.set(r.dateKey, r.reason || 'Izin harian')
+    }
+  }
+
+  const leaveRows = await db
+    .select({ startDate: studentLeaveRequest.startDate, endDate: studentLeaveRequest.endDate, reason: studentLeaveRequest.reason })
+    .from(studentLeaveRequest)
+    .where(and(eq(studentLeaveRequest.studentId, studentSess.id), eq(studentLeaveRequest.status, 'approved')))
+  const leaveByDay = new Map<string, string>()
+  for (const r of leaveRows) {
+    const from = r.startDate > startKey ? r.startDate : startKey
+    const until = r.endDate < endKey ? r.endDate : endKey
+    for (let d = from; d <= until;) {
+      if (!excuseByDay.has(d)) leaveByDay.set(d, r.reason)
+      const dt = new Date(d + 'T00:00:00')
+      dt.setDate(dt.getDate() + 1)
+      d = dayKey(dt)
+    }
+  }
+
   // Build calendar months
   for (const m of months) {
     const daysInMonth = new Date(m.year, m.month + 1, 0).getDate()
@@ -154,10 +179,17 @@ export async function GET() {
           else if (att.status === 'excused') status = 'excused'
           else status = 'present'
           note = att.notes || undefined
-        } else if (isFuture) {
-          status = 'future'
         } else {
-          status = 'missed'
+          // Izin (daily excuse or approved leave) beats "tidak hadir".
+          const excusedReason = excuseByDay.get(dk) || leaveByDay.get(dk)
+          if (excusedReason) {
+            status = 'excused'
+            note = `Izin: ${excusedReason}`
+          } else if (isFuture) {
+            status = 'future'
+          } else {
+            status = 'missed'
+          }
         }
         const firstSession = daySessions[0]
         sessionTitle = `${firstSession.title} · ${firstSession.mode === 'online' ? 'Online' : 'Offline'}`
