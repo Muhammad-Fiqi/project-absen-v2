@@ -341,8 +341,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
         </CardContent>
       </Card>
 
-      {/* Calendar heatmap */}
-      <div className="mb-6">
+      <div className="mb-6 hidden">
         <AttendanceCalendar />
       </div>
 
