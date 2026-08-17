@@ -17,7 +17,7 @@ export function dayKey(d: Date): string {
 // The daily quota starts "besok" (the day after rollout, 2026-08-11 → 2026-08-12):
 // session days BEFORE this key are forgiven forever and are never charged, so
 // students who skipped / didn't attend / didn't izin on past days keep their quota.
-export const QUOTA_DAILY_START_KEY = '2026-08-12'
+export const QUOTA_DAILY_START_KEY = '2026-08-18'
 
 // A day's quota is only charged starting the day AFTER that day, so the
 // deduction target is always "yesterday" — today is never charged on the same day.
