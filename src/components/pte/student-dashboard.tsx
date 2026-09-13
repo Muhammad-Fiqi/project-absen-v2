@@ -623,7 +623,7 @@ function DayGroupCard({
             return (
               <div
                 key={s.id}
-                className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+                className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 transition-colors ${
                   canCheckIn ? 'border-primary/40 bg-primary/5 hover:bg-primary/10' : 'border-border/60 bg-card'
                 }`}
               >
@@ -666,8 +666,6 @@ function DayGroupCard({
                   {!canCheckIn && !attendedSession && !isHistory && s.checkInWindow.message && (
                     <p className="mt-0.5 text-[10px] text-muted-foreground/70">{s.checkInWindow.message}</p>
                   )}
-                  {/* Expanded capacity panel */}
-                  <SessionCapacity sessionId={s.id} isOpen={expandedSession === s.id} />
                 </div>
                 {canCheckIn ? (
                   <Button size="sm" onClick={() => onCheckIn(s)} className="shrink-0 gap-1">
@@ -686,6 +684,10 @@ function DayGroupCard({
                 ) : (
                   <span className="shrink-0 text-[10px] text-muted-foreground/60">{s.checkInWindow.message}</span>
                 )}
+                {/* Expanded capacity panel occupies the second flex row. */}
+                <div className="basis-full min-w-0">
+                  <SessionCapacity sessionId={s.id} isOpen={expandedSession === s.id} />
+                </div>
               </div>
               
             )
