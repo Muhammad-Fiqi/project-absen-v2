@@ -29,6 +29,7 @@ export function yesterdayKey(d: Date = new Date()): string {
 
 export function normalizeDayKey(value: Date | string): string {
   if (typeof value === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}(?:$|T)/.test(value)) return value.slice(0, 10)
     const candidate = new Date(value)
     if (!Number.isNaN(candidate.getTime())) {
       return dayKey(candidate)

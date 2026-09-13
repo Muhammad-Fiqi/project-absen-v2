@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'bun:test'
-import { shouldSkipDailyQuotaReduction, isLeaveRequestTooSoon } from './quota'
+import { normalizeDayKey, shouldSkipDailyQuotaReduction, isLeaveRequestTooSoon } from './quota'
 
 describe('quota rules', () => {
+  it('keeps a session date literal even when its time is before 07:00', () => {
+    expect(normalizeDayKey('2026-09-14T05:00:00.000Z')).toBe('2026-09-14')
+  })
+
   it('skips reduction when student has approved leave on that date', () => {
     const result = shouldSkipDailyQuotaReduction({
       hasApprovedLeave: true,

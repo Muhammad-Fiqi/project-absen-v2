@@ -21,12 +21,12 @@ export async function GET(req: NextRequest) {
   const conditions = []
   if (courseId) conditions.push(eq(session.courseId, courseId))
   if (dateStr) {
-    const d = new Date(dateStr)
-    const next = new Date(d.getTime() + 86400000)
     // Session.date stored as ISO date string (YYYY-MM-DD or full ISO).
     // Compare lexicographically on YYYY-MM-DD prefix.
-    const startKey = d.toISOString().slice(0, 10)
-    const endKey = next.toISOString().slice(0, 10)
+    const startKey = dateStr.slice(0, 10)
+    const startParts = startKey.split('-').map(Number)
+    const next = new Date(startParts[0], startParts[1] - 1, startParts[2] + 1)
+    const endKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`
     conditions.push(gte(session.date, startKey))
     conditions.push(lt(session.date, endKey))
   }
@@ -130,9 +130,12 @@ export async function POST(req: NextRequest) {
       .where(eq(session.courseId, courseId))
     const sessionNumber = (Number(maxRows[0]?.m ?? 0) || 0) + 1
 
+    const dateKey = String(date).slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+      return NextResponse.json({ error: 'Format tanggal tidak valid (YYYY-MM-DD)' }, { status: 400 })
+    }
     const start = new Date(startTime)
     const end = new Date(endTime)
-    const dayDate = new Date(start.getFullYear(), start.getMonth(), start.getDate())
     const isOffline = mode === 'offline'
 
     const [created] = await db
@@ -142,7 +145,7 @@ export async function POST(req: NextRequest) {
         courseId,
         sessionNumber,
         title: title || `SESI ${sessionNumber} · ${mode === 'online' ? 'Online' : 'Offline'}`,
-        date: dayDate.toISOString(),
+        date: `${dateKey}T00:00:00`,
         startTime: start.toISOString(),
         endTime: end.toISOString(),
         mode,

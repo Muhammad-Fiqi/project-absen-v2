@@ -3,7 +3,7 @@ import { and, count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { session, course, attendance, student, quotaDailyUsage } from '@/db/schema'
 import { getCurrentStudent } from '@/lib/auth'
-import { applyDailyQuotaDeduction, hasApprovedLeaveForDate, hasValidExcuseForDate } from '@/lib/quota'
+import { applyDailyQuotaDeduction, hasApprovedLeaveForDate, hasValidExcuseForDate, normalizeDayKey, yesterdayKey } from '@/lib/quota'
 import { newId } from '@/lib/id'
 
 export const runtime = 'nodejs'
@@ -51,11 +51,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const now = new Date()
-    const sessionDate = new Date(sessionRow.date)
-    const dayKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}-${String(sessionDate.getDate()).padStart(2, '0')}`
+    const dayKey = normalizeDayKey(sessionRow.date)
 
     // Process daily quota reduction (catch-up) before checking quota below.
-    await applyDailyQuotaDeduction(studentSess.id, dayKey)
+    // Today is never charged on the day it occurs. Catch up only through yesterday.
+    await applyDailyQuotaDeduction(studentSess.id, yesterdayKey())
 
 // === BASIC VALIDATIONS ===
 

@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
           courseId,
           sessionNumber: nextNum,
           title: `SESI ${nextNum} · ${modeLabel}`,
-          date: startDateTime.toISOString(),
+          date: `${date}T00:00:00`,
           startTime: startDateTime.toISOString(),
           endTime: endDateTime.toISOString(),
           mode: s.mode,

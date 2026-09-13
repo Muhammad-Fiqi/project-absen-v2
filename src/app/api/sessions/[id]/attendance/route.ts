@@ -6,7 +6,7 @@ import { getCurrentStudent } from '@/lib/auth'
 import { verifyQrPayload, verifyRotatingCode } from '@/lib/security'
 import type { AttendanceSubmitRequest, AttendanceSubmitResponse } from '@/lib/types'
 import { newId } from '@/lib/id'
-import { hasApprovedLeaveForDate, hasValidExcuseForDate } from '@/lib/quota'
+import { applyDailyQuotaDeduction, hasApprovedLeaveForDate, hasValidExcuseForDate, normalizeDayKey, yesterdayKey } from '@/lib/quota'
 
 export const runtime = 'nodejs'
 
@@ -78,8 +78,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const now = new Date()
+  // Today is never charged on the day it occurs. Catch up only through yesterday.
+  await applyDailyQuotaDeduction(studentSess.id, yesterdayKey())
   const checks: AttendanceSubmitResponse['checks'] = {}
-  const sessionDateKey = dayKey(new Date(sessionRow.date))
+  const sessionDateKey = normalizeDayKey(sessionRow.date)
 
   // === QUOTA CHECK ===
   const [dailyUsageRow] = await db
@@ -109,8 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // === ONE-SESSION-PER-DAY CHECK ===
-  const sessionDate = new Date(sessionRow.date)
-  const dk = dayKey(sessionDate)
+  const dk = normalizeDayKey(sessionRow.date)
   const todayAttendanceRows = await db
     .select()
     .from(attendance)

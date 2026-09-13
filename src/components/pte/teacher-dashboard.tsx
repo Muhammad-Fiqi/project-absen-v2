@@ -687,14 +687,12 @@ function CreateSessionDialog({
     }
     setLoading(true)
     try {
-      const start = new Date(`${form.date}T${form.startTime}`)
-      const end = new Date(`${form.date}T${form.endTime}`)
       const rep = await apiGet<{ course: { id: string } }>('/api/reports/course')
       await apiPost('/api/sessions', {
         courseId: rep.course.id,
-        date: start.toISOString(),
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
+        date: form.date,
+        startTime: `${form.date}T${form.startTime}`,
+        endTime: `${form.date}T${form.endTime}`,
         mode: form.mode,
         platform: form.platform,
         room: form.room,

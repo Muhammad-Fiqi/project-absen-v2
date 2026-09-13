@@ -168,18 +168,14 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
         date,
         topicOfDay: topicOfDay || undefined,
         maxAttendees,
-        sessions: allRows.map((r) => {
-          const start = new Date(`${date}T${r.startTime}`)
-          const end = new Date(`${date}T${r.endTime}`)
-          return {
-            startTime: start.toISOString(),
-            endTime: end.toISOString(),
+        sessions: allRows.map((r) => ({
+            startTime: r.startTime,
+            endTime: r.endTime,
             mode: r.mode,
             platform: r.platform || undefined,
             room: r.room || undefined,
             teacher: r.teacher || undefined,
-          }
-        }),
+          })),
       })
       toast.success(`${totalCount} sesi berhasil dibuat!`)
       onOpenChange(false)
