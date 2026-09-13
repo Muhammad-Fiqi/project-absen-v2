@@ -43,7 +43,7 @@ const CLASS_PACKAGES = [
     features: [
       'Semua Benefit Kelas Standard',
       'Garansi Mengulang Kelas Gratis (Jika Skor < 24 WHV)',
-      'Bantuan Cetak Bank Reference Senilai AUD 5.000',
+      'Bantuan Dokumen Pendukung Untuk Pembuatan Paspor',
       'Gratis Sewa Sepeda Selama Kelas Offline di Pare',
       'Penjemputan Gratis dari Bandara Juanda atau Stasiun Kediri',
       'Konsultasi WHV & Feedback Feedback Lifetime',
