@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import {
   Calendar,
   CheckCircle2,
@@ -46,6 +47,7 @@ import { RequestExtension } from './request-extension'
 import { LeaveRequestDialog } from './leave-request-dialog'
 import { AttendanceCalendar } from './attendance-calendar'
 import { SessionCapacity } from './session-capacity'
+import { AnnouncementPopup } from './announcement-popup'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
 import type { StudentDashboard as StudentDashboardData, DayGroup } from '@/lib/types'
@@ -96,6 +98,8 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
   const [excuseLoading, setExcuseLoading] = useState(false)
   const [excuseConfirmOpen, setExcuseConfirmOpen] = useState(false)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
+  const [showAnnouncement, setShowAnnouncement] = useState(false)
+  const [announcementLoaded, setAnnouncementLoaded] = useState(false)
 
   const loadExtRequests = useCallback(async () => {
     setExtLoading(true)
@@ -128,6 +132,17 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
   useEffect(() => {
     loadLeaveRequests()
   }, [loadLeaveRequests])
+
+  // Show announcement popup on first visit to student dashboard
+  useEffect(() => {
+    if (!announcementLoaded) {
+      const dismissed = localStorage.getItem('announcement-popup-dismissed')
+      if (dismissed !== 'true') {
+        setShowAnnouncement(true)
+      }
+      setAnnouncementLoaded(true)
+    }
+  }, [announcementLoaded])
 
   async function refresh() {
     setRefreshing(true)
@@ -177,10 +192,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
       {/* Welcome */}
       <div className="mb-6 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-              <GraduationCap className="h-6 w-6" />
-            </div>
+          <div>
             <div>
               <h1 className="text-xl font-bold sm:text-2xl">Halo, {student.name.split(' ')[0]}! 👋</h1>
               <p className="text-sm text-muted-foreground">
@@ -193,7 +205,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
               <ShieldCheck className="h-3.5 w-3.5" />
               {excuseLoading ? 'Memproses...' : 'Izin'}
             </Button>
-            <Button variant="secondary" size="sm" onClick={requestLeaveClass} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={requestLeaveClass} className="gap-1.5">
               <CalendarDays className="h-3.5 w-3.5" />
               Ajukan Permintaan Cuti Kelas
             </Button>
@@ -487,6 +499,8 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
         onReload={loadLeaveRequests}
         onRequestNew={() => setLeaveDialogOpen(true)}
       />
+
+      <AnnouncementPopup isOpen={showAnnouncement} onClose={() => setShowAnnouncement(false)} />
     </div>
   )
 }

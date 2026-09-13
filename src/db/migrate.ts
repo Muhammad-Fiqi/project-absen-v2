@@ -46,6 +46,7 @@ export async function ensureDummyTables() {
       "courseId" TEXT,
       "pinHash" TEXT,
       "sessionQuota" INTEGER NOT NULL DEFAULT 15,
+      "sessionQuotaRemaining" INTEGER NOT NULL DEFAULT 15,
       "quotaExtendedAt" TEXT,
       "quotaNote" TEXT,
       "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
@@ -179,6 +180,15 @@ export async function ensureDummyTables() {
     }
 
     throw new Error('No compatible raw SQL executor found for ensureDummyTables (expected query/execute/batch)')
+  }
+
+  // CREATE TABLE does not add columns to databases created by older versions.
+  try {
+    const alter = 'ALTER TABLE "Student" ADD COLUMN "sessionQuotaRemaining" INTEGER NOT NULL DEFAULT 15;'
+    if (typeof client.query === 'function') await client.query(alter)
+    else if (typeof client.execute === 'function') await client.execute({ sql: alter })
+  } catch {
+    // The column already exists on current databases.
   }
 }
 

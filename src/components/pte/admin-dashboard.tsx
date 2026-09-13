@@ -437,7 +437,7 @@ export function AdminDashboard() {
 
       {/* Admin Multi-Tab Navigation */}
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-6 max-md:h-[110px]">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 xl:grid-cols-6">
           <TabsTrigger value="students" className="gap-1.5 font-medium">
             <Users className="h-4 w-4" /> Kelola Siswa
           </TabsTrigger>

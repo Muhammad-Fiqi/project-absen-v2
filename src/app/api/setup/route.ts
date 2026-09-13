@@ -92,6 +92,7 @@ export async function POST() {
         courseCode: courseRow.code,
         courseId: courseId,
         sessionQuota: s.quota,
+        sessionQuotaRemaining: s.quota,
         email: null,
         phone: null,
         quotaExtendedAt: null,

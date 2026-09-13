@@ -36,6 +36,7 @@ const TEST_DDL = [
     "courseId" TEXT,
     "pinHash" TEXT,
     "sessionQuota" INTEGER NOT NULL DEFAULT 15,
+    "sessionQuotaRemaining" INTEGER NOT NULL DEFAULT 15,
     "quotaExtendedAt" TEXT,
     "quotaNote" TEXT,
     "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
@@ -177,6 +178,8 @@ describe('kuota harian (session days only, backfill)', () => {
     const res = await applyDailyQuotaDeductionWithDb(db, s, '2026-08-03', { startKey: '2026-08-01' })
     expect(res.deducted).toBe(3)
     expect(await usageKeys(s)).toEqual(['2026-08-01', '2026-08-02', '2026-08-03'])
+    const [savedStudent] = await db.select({ remaining: student.sessionQuotaRemaining }).from(student).where(eq(student.id, s))
+    expect(savedStudent.remaining).toBe(7)
   })
 
   it('1b. hari sebelum tanggal mulai kuota (startKey) tidak pernah dihitung', async () => {

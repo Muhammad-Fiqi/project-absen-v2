@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { GraduationCap, ArrowLeft, Loader2, KeyRound, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -47,8 +48,8 @@ export function StudentLogin({ onBack, onSuccess }: StudentLoginProps) {
           >
             <ArrowLeft className="h-4 w-4" /> Kembali
           </button>
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <GraduationCap className="h-7 w-7" />
+          <div className="mx-auto flex h-16 w-38 items-center justify-center overflow-hidden rounded-2xl px-3">
+            <Image src="/logo.png" alt="Ruang PTE" width={180} height={65} className="h-auto w-full object-contain" priority />
           </div>
           <CardTitle className="text-xl">Login Siswa</CardTitle>
           <CardDescription>

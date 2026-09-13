@@ -28,8 +28,12 @@ dist/
 /db/*.db-journal
 /db/*.db-wal
 /db/*.db-shm
-/auth/
-/auth-wal/
+/auth
+/auth-wal
+
+# Local agent and session memory
+/.kilo/
+/memory/
 
 # Generated client / compiled output
 /src/generated/
@@ -77,6 +81,7 @@ Thumbs.db
 .project-memory/
 .zcode/
 .zscripts/
+/.agents/
 .tool-versions
 .prompt
 .claude

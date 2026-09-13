@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { student, attendance } from '@/db/schema'
+import { student, attendance, quotaDailyUsage } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -27,7 +27,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (name !== undefined) updates.name = name.trim()
     if (email !== undefined) updates.email = email?.trim() || null
     if (phone !== undefined) updates.phone = phone?.trim() || null
-    if (sessionQuota !== undefined) updates.sessionQuota = Math.max(0, Math.min(100, Number(sessionQuota)))
+    if (sessionQuota !== undefined) {
+      const newQuota = Math.max(0, Math.min(100, Number(sessionQuota)))
+      const [usageRow] = await db
+        .select({ n: count() })
+        .from(quotaDailyUsage)
+        .where(eq(quotaDailyUsage.studentId, id))
+      updates.sessionQuota = newQuota
+      updates.sessionQuotaRemaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0))
+    }
     if (pinHash !== undefined && pinHash.trim().length > 0) updates.pinHash = pinHash.trim()
     if (courseCode !== undefined) updates.courseCode = courseCode.trim().toUpperCase()
     if (courseId !== undefined) updates.courseId = courseId || null

@@ -263,6 +263,11 @@ export async function applyDailyQuotaDeductionWithDb(
   const usageSet: Set<string> = new Set(usageRows.map((r: { dateKey: string }) => r.dateKey))
   let usedCount = usageRows.length
 
+  await db
+    .update(student)
+    .set({ sessionQuotaRemaining: Math.max(0, studentRow.sessionQuota - usedCount) })
+    .where(eq(student.id, studentId))
+
   // Approved leave ranges (once) → per-day range check in the loop.
   const leaveRows = await db
     .select({ startDate: studentLeaveRequest.startDate, endDate: studentLeaveRequest.endDate })
@@ -289,6 +294,10 @@ export async function applyDailyQuotaDeductionWithDb(
 
   for (const k of candidateKeys) {
     if (usedCount + inserted >= studentRow.sessionQuota) {
+      await db
+        .update(student)
+        .set({ sessionQuotaRemaining: 0 })
+        .where(eq(student.id, studentId))
       return { deducted: inserted, quotaExhausted: true, skippedLeave, skippedExcuse }
     }
     if (leaveRanges.some((r) => r.startDate <= k && r.endDate >= k)) {
@@ -305,6 +314,11 @@ export async function applyDailyQuotaDeductionWithDb(
     usageSet.add(k)
     inserted++
   }
+
+  await db
+    .update(student)
+    .set({ sessionQuotaRemaining: Math.max(0, studentRow.sessionQuota - usedCount - inserted) })
+    .where(eq(student.id, studentId))
 
   return { deducted: inserted, quotaExhausted: usedCount + inserted >= studentRow.sessionQuota, skippedLeave, skippedExcuse }
 }

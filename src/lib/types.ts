@@ -160,6 +160,7 @@ export interface StudentManageRow {
   email: string | null
   phone: string | null
   sessionQuota: number
+  sessionQuotaRemaining: number
   sessionsUsed: number
   sessionsRemaining: number
   quotaExhausted: boolean

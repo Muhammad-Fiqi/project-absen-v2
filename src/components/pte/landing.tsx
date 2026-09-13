@@ -345,9 +345,9 @@ export function Landing({ onSelectStudent, onSelectTeacher, onSelectAdmin }: Lan
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-card border border-border/40">
               <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
               <div>
-                <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider">Alamat Kampus</h4>
+                <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider">Alamat Kursus</h4>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  Jl. Brawijaya, Area Kampung Inggris Pare, Kabupaten Kediri, Jawa Timur 64212.
+                  Jl. Asparaga No.50, Tegalsari, Tulungrejo, Kec. Pare, Kabupaten Kediri, Jawa Timur 64212
                 </p>
               </div>
             </div>
@@ -357,7 +357,7 @@ export function Landing({ onSelectStudent, onSelectTeacher, onSelectAdmin }: Lan
               <div>
                 <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider">Kontak WhatsApp</h4>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  +62 812-3456-7890 (Admin Pendaftaran)
+                  +62 815-5963-9471 (Admin Pendaftaran)
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">Senin – Sabtu (08.00 – 17.00 WIB)</p>
               </div>
@@ -368,7 +368,7 @@ export function Landing({ onSelectStudent, onSelectTeacher, onSelectAdmin }: Lan
               <div>
                 <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider">Email Informasi</h4>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  info@ruangpte.com / admin@ruangpte.com
+                  ruangpte@gmail.com / rekrutmen@ruangpte.com
                 </p>
               </div>
             </div>

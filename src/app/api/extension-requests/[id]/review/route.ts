@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { extensionRequest, student, quotaExtension } from '@/db/schema'
+import { extensionRequest, student, quotaExtension, quotaDailyUsage } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 import { newId } from '@/lib/id'
 
@@ -62,12 +62,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const toAdd = typeof grantedSessions === 'number' && grantedSessions > 0 ? grantedSessions : request.requestedSessions
   const oldQuota = studentRow.sessionQuota
   const newQuota = oldQuota + toAdd
+  const [usageRow] = await db
+    .select({ n: count() })
+    .from(quotaDailyUsage)
+    .where(eq(quotaDailyUsage.studentId, request.studentId))
+  const remaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0))
 
   await db.transaction(async (tx) => {
     await tx
       .update(student)
       .set({
         sessionQuota: newQuota,
+        sessionQuotaRemaining: remaining,
         quotaExtendedAt: new Date().toISOString(),
         quotaNote: note || `Approved from extension request`,
       })

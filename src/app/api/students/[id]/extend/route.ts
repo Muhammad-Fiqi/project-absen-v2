@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { student, quotaExtension } from '@/db/schema'
+import { student, quotaExtension, quotaDailyUsage } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 import { newId } from '@/lib/id'
 
@@ -38,6 +38,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Kuota baru harus lebih besar dari kuota saat ini' }, { status: 400 })
   }
   const added = newQuota - studentRow.sessionQuota
+  const [usageRow] = await db
+    .select({ n: count() })
+    .from(quotaDailyUsage)
+    .where(eq(quotaDailyUsage.studentId, id))
+  const remaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0))
 
   // Update student + create extension audit log in a transaction
   const [updated] = await db.transaction(async (tx) => {
@@ -45,6 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .update(student)
       .set({
         sessionQuota: newQuota,
+        sessionQuotaRemaining: remaining,
         quotaExtendedAt: new Date().toISOString(),
         quotaNote: reason || studentRow.quotaNote,
       })

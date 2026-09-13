@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { student, course, attendance, quotaExtension, adminUser } from '@/db/schema'
+import { student, course, attendance, quotaExtension, adminUser, quotaDailyUsage } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 import { newId } from '@/lib/id'
 import type { StudentManageRow } from '@/lib/types'
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       courseId: finalCourseId,
       pinHash: pinHash || cleanCode.slice(-4), // default PIN = last 4 of code
       sessionQuota: sessionQuota ?? 15,
+      sessionQuotaRemaining: sessionQuota ?? 15,
       createdAt: new Date().toISOString(),
     })
 
@@ -73,6 +74,11 @@ export async function GET() {
   const students = await db.select().from(student).orderBy(student.studentCode)
   const attendances = await db.select().from(attendance)
   const verifiedAttendances = attendances.filter((a) => a.verified)
+  const usageRows = await db.select().from(quotaDailyUsage)
+  const usageByStudent = new Map<string, number>()
+  for (const usage of usageRows) {
+    usageByStudent.set(usage.studentId, (usageByStudent.get(usage.studentId) ?? 0) + 1)
+  }
 
   // Course map (one course for now, but be safe)
   const courseIds = Array.from(new Set(students.map((s) => s.courseId).filter(Boolean) as string[]))
@@ -93,7 +99,7 @@ export async function GET() {
 
   const rows: StudentManageRow[] = students.map((s) => {
     const atts = verifiedAttendances.filter((a) => a.studentId === s.id)
-    const used = atts.length
+    const used = usageByStudent.get(s.id) ?? 0
     const remaining = Math.max(0, s.sessionQuota - used)
     const uniqueDays = new Set(atts.map((a) => a.dayKey)).size
     const lastCheckIn = atts.length > 0
@@ -110,6 +116,7 @@ export async function GET() {
       email: s.email,
       phone: s.phone,
       sessionQuota: s.sessionQuota,
+      sessionQuotaRemaining: remaining,
       sessionsUsed: used,
       sessionsRemaining: remaining,
       quotaExhausted: remaining <= 0,

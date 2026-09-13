@@ -1,6 +1,7 @@
 'use client'
 
-import { GraduationCap, ShieldCheck, LogOut, User, Loader2 } from 'lucide-react'
+import Image from 'next/image'
+import { ShieldCheck, LogOut, User, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -21,24 +22,20 @@ interface HeaderProps {
 
 export function Header({ role, user, onLogout }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600 text-primary-foreground shadow-sm">
-            <GraduationCap className="h-5 w-5" />
-            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-sky-400 ring-2 ring-background" />
+          <div className="relative flex h-10 w-30 items-center justify-center overflow-hidden rounded-xl px-5 filter drop-shadow-[0_0_10px_#00fffc]">
+            <Image src="/logo.png" alt="Ruang PTE" width={140} height={55} className="h-auto w-full object-contain" priority />
           </div>
           <div className="leading-tight">
             <div className="flex items-center gap-2">
-              <span className="bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-base font-bold tracking-tight text-transparent">
-                Ruang PTE Attendance
+              <span className="bg-gradient-to-r max-md:hidden from-foreground to-foreground/80 bg-clip-text text-base font-bold tracking-tight text-transparent">
+                Ruang PTE
               </span>
-              <Badge variant="secondary" className="hidden h-5 px-1.5 text-[10px] font-medium sm:inline-flex">
-                <ShieldCheck className="mr-1 h-3 w-3" /> Anti-Curang
-              </Badge>
             </div>
             <p className="hidden text-xs text-muted-foreground sm:block">
-              Sistem Absensi official Ruang PTE
+              Website resmi Ruang PTE
             </p>
           </div>
         </div>
