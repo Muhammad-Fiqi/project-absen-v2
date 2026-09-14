@@ -23,6 +23,7 @@ import { ExcuseReviewPanel } from './excuse-review-panel'
 import { BulkSessionDialog } from './bulk-session-dialog'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
+import { sessionTimeLabel } from '@/lib/session-time'
 
 interface SessionItem {
   id: string
@@ -476,7 +477,7 @@ function LeaveReviewPanel({
 function SessionInfoBar({ session, children }: { session: SessionItem; children?: ReactNode }) {
   const st = STATUS_STYLE[session.status] || STATUS_STYLE.scheduled
   const fmtDate = new Date(session.startTime).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })
-  const fmtTime = (d: string) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  const fmtTime = sessionTimeLabel
   const ModeIcon = session.mode === 'online' ? Video : Building2
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-3">
@@ -589,7 +590,7 @@ function SessionsByDay({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {d.sessions.map((s) => {
                   const st = STATUS_STYLE[s.status] || STATUS_STYLE.scheduled
-                  const fmtTime = (d: string) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                  const fmtTime = sessionTimeLabel
                   const ModeIcon = s.mode === 'online' ? Video : Building2
                   const isSelected = s.id === selectedId
                   return (

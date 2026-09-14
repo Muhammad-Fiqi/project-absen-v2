@@ -17,6 +17,7 @@ import {
 import { apiPost } from '@/lib/api-client'
 import { toast } from 'sonner'
 import type { AttendanceSubmitResponse } from '@/lib/types'
+import { sessionTimeLabel } from '@/lib/session-time'
 
 interface AttendanceFlowProps {
   open: boolean
@@ -82,7 +83,7 @@ export function AttendanceFlow({
     }
   }
 
-  const fmtTime = (d: string) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  const fmtTime = sessionTimeLabel
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (

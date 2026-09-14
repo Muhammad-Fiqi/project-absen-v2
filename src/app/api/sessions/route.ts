@@ -5,6 +5,7 @@ import { session, course, attendance } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 import { generateQrSecret } from '@/lib/security'
 import { newId } from '@/lib/id'
+import { normalizeSessionDateTime } from '@/lib/session-time'
 
 export const runtime = 'nodejs'
 
@@ -134,8 +135,13 @@ export async function POST(req: NextRequest) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
       return NextResponse.json({ error: 'Format tanggal tidak valid (YYYY-MM-DD)' }, { status: 400 })
     }
-    const start = new Date(startTime)
-    const end = new Date(endTime)
+    const normalizedStartTime = normalizeSessionDateTime(dateKey, String(startTime))
+    const normalizedEndTime = normalizeSessionDateTime(dateKey, String(endTime))
+    const start = new Date(normalizedStartTime)
+    const end = new Date(normalizedEndTime)
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return NextResponse.json({ error: 'Format jam tidak valid' }, { status: 400 })
+    }
     const isOffline = mode === 'offline'
 
     const [created] = await db
@@ -146,8 +152,8 @@ export async function POST(req: NextRequest) {
         sessionNumber,
         title: title || `SESI ${sessionNumber} · ${mode === 'online' ? 'Online' : 'Offline'}`,
         date: `${dateKey}T00:00:00`,
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
+        startTime: normalizedStartTime,
+        endTime: normalizedEndTime,
         mode,
         platform: platform || (isOffline ? 'Office' : 'Google Meet'),
         room: room || null,

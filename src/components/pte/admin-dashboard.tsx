@@ -25,6 +25,7 @@ import { ExcuseReviewPanel } from './excuse-review-panel'
 import { CoursesManage } from './courses-manage'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
+import { sessionTimeLabel } from '@/lib/session-time'
 
 interface SessionItem {
   id: string
@@ -551,7 +552,7 @@ export function AdminDashboard() {
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       {d.sessions.map((s) => {
                         const st = STATUS_STYLE[s.status] || STATUS_STYLE.scheduled
-                        const fmtTime = (dt: string) => new Date(dt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                        const fmtTime = sessionTimeLabel
                         const ModeIcon = s.mode === 'online' ? Video : Building2
                         return (
                           <div

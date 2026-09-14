@@ -50,6 +50,7 @@ import { SessionCapacity } from './session-capacity'
 import { AnnouncementPopup } from './announcement-popup'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
+import { sessionTimeLabel } from '@/lib/session-time'
 import type { StudentDashboard as StudentDashboardData, DayGroup } from '@/lib/types'
 
 // YYYY-MM-DD key in LOCAL time (matches server-side dayKey())
@@ -609,7 +610,7 @@ function DayGroupCard({
             <CheckCircle2 className="h-4 w-4 text-primary" />
             <span className="text-muted-foreground">
               Anda absen di <strong>{attendedSession.title}</strong> ·{' '}
-              {new Date(attendedSession.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} ·{' '}
+              {sessionTimeLabel(attendedSession.startTime)} ·{' '}
               {attendedSession.mode === 'online' ? attendedSession.platform : 'Offline'} · {attendedSession.teacher}
             </span>
           </div>
@@ -618,7 +619,7 @@ function DayGroupCard({
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {day.sessions.map((s) => {
             const ModeIcon = s.mode === 'online' ? Video : Building2
-            const fmtTime = (d: string) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+            const fmtTime = sessionTimeLabel
             const canCheckIn = s.canCheckIn && !attendedSession && !isHistory && !quotaExhausted
             return (
               <div

@@ -5,6 +5,7 @@ import { session, course } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 import { generateQrSecret } from '@/lib/security'
 import { newId } from '@/lib/id'
+import { normalizeSessionDateTime } from '@/lib/session-time'
 
 export const runtime = 'nodejs'
 
@@ -83,17 +84,10 @@ export async function POST(req: NextRequest) {
       let startDateTime: Date
       let endDateTime: Date
 
-      if (s.startTime.includes('T')) {
-        startDateTime = new Date(s.startTime)
-      } else {
-        startDateTime = new Date(`${date}T${s.startTime}:00`)
-      }
-
-      if (s.endTime.includes('T')) {
-        endDateTime = new Date(s.endTime)
-      } else {
-        endDateTime = new Date(`${date}T${s.endTime}:00`)
-      }
+      const normalizedStartTime = normalizeSessionDateTime(date, s.startTime)
+      const normalizedEndTime = normalizeSessionDateTime(date, s.endTime)
+      startDateTime = new Date(normalizedStartTime)
+      endDateTime = new Date(normalizedEndTime)
 
       if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
         return NextResponse.json(
@@ -121,8 +115,8 @@ export async function POST(req: NextRequest) {
           sessionNumber: nextNum,
           title: `SESI ${nextNum} · ${modeLabel}`,
           date: `${date}T00:00:00`,
-          startTime: startDateTime.toISOString(),
-          endTime: endDateTime.toISOString(),
+          startTime: normalizedStartTime,
+          endTime: normalizedEndTime,
           mode: s.mode,
           platform,
           room: s.room || null,

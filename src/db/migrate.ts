@@ -182,6 +182,13 @@ export async function ensureDummyTables() {
     throw new Error('No compatible raw SQL executor found for ensureDummyTables (expected query/execute/batch)')
   }
 
+  // Older session records were built from local WIB input and then serialized
+  // with toISOString(), which made the displayed time seven hours late.
+  // Preserve their clock values and mark them as WIB instead.
+  const repairLegacySessionTimes = 'UPDATE "Session" SET "startTime" = replace("startTime", \'Z\', \'+07:00\'), "endTime" = replace("endTime", \'Z\', \'+07:00\') WHERE "startTime" LIKE \'%Z\' AND "endTime" LIKE \'%Z\';'
+  if (typeof client.query === 'function') await client.query(repairLegacySessionTimes)
+  else if (typeof client.execute === 'function') await client.execute({ sql: repairLegacySessionTimes })
+
   // CREATE TABLE does not add columns to databases created by older versions.
   try {
     const alter = 'ALTER TABLE "Student" ADD COLUMN "sessionQuotaRemaining" INTEGER NOT NULL DEFAULT 15;'
