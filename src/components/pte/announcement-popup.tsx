@@ -61,7 +61,7 @@ export function AnnouncementPopup({ isOpen, onClose }: { isOpen: boolean; onClos
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Bell className="h-6 w-6" />
           </div>
-          <DialogTitle className="text-xl font-bold">Reminder Sistem Absensi</DialogTitle>
+          <DialogTitle className="text-xl font-bold">Penting Wajib Baca!</DialogTitle>
           <DialogDescription className="text-muted-foreground">
             Berhubung masih banyak siswa yang belum memahami update penting pada sistem pengurangan kuota absensi, kami Tim IT Ruang PTE ingin menginformasikan kembali bahwa sistem pengurangan absensi per tanggal <strong>18 agustus</strong>  kemarin memiliki update sebagai berikut:
           </DialogDescription>
