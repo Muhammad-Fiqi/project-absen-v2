@@ -111,9 +111,10 @@ export async function ensureDummyTables() {
     CREATE TABLE IF NOT EXISTS "QuotaDailyUsage" (
       "id" TEXT PRIMARY KEY,
       "studentId" TEXT NOT NULL,
+      "sessionId" TEXT,
       "dateKey" TEXT NOT NULL,
       "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
-      UNIQUE("studentId", "dateKey")
+      UNIQUE("studentId", "sessionId", "dateKey")
     );
 
     CREATE TABLE IF NOT EXISTS "QuotaExcuse" (
@@ -196,6 +197,31 @@ export async function ensureDummyTables() {
     else if (typeof client.execute === 'function') await client.execute({ sql: alter })
   } catch {
     // The column already exists on current databases.
+  }
+
+  // Upgrade the old one-row-per-student-day quota table so manual attendance
+  // can charge each attended session, including multiple sessions per day.
+  try {
+    const tableInfo = typeof client.query === 'function'
+      ? await client.query('PRAGMA table_info("QuotaDailyUsage");')
+      : await client.execute({ sql: 'PRAGMA table_info("QuotaDailyUsage");' })
+    const columns = tableInfo?.rows ?? tableInfo
+    const hasSessionId = Array.isArray(columns) && columns.some((column: { name?: string }) => column.name === 'sessionId')
+
+    if (!hasSessionId) {
+      const upgradeStatements = [
+        'CREATE TABLE "QuotaDailyUsage_new" ("id" TEXT PRIMARY KEY, "studentId" TEXT NOT NULL, "sessionId" TEXT, "dateKey" TEXT NOT NULL, "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP), UNIQUE("studentId", "sessionId", "dateKey"));',
+        'INSERT INTO "QuotaDailyUsage_new" ("id", "studentId", "dateKey", "createdAt") SELECT "id", "studentId", "dateKey", "createdAt" FROM "QuotaDailyUsage";',
+        'DROP TABLE "QuotaDailyUsage";',
+        'ALTER TABLE "QuotaDailyUsage_new" RENAME TO "QuotaDailyUsage";',
+      ]
+      for (const stmt of upgradeStatements) {
+        if (typeof client.query === 'function') await client.query(stmt)
+        else await client.execute({ sql: stmt })
+      }
+    }
+  } catch (error) {
+    console.error('QuotaDailyUsage migration failed', error)
   }
 }
 

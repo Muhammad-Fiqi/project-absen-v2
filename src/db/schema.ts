@@ -115,11 +115,12 @@ export const quotaDailyUsage = sqliteTable(
   {
     id: text('id').primaryKey(),
     studentId: text('studentId').notNull(),
+    sessionId: text('sessionId'),
     dateKey: text('dateKey').notNull(),
     createdAt: text('createdAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
   },
   (t) => ({
-    uniqueStudentDay: uniqueIndex('QuotaDailyUsage_student_day_unique').on(t.studentId, t.dateKey),
+    uniqueStudentSession: uniqueIndex('QuotaDailyUsage_student_session_day_unique').on(t.studentId, t.sessionId, t.dateKey),
   })
 )
 

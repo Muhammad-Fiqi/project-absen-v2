@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq, count } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { attendance, session, student } from '@/db/schema'
+import { attendance, quotaDailyUsage, session, student } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 import { newId } from '@/lib/id'
+import { normalizeDayKey } from '@/lib/quota'
 
 export const runtime = 'nodejs'
 
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const now = new Date()
-    const dayKey = now.toISOString().split('T')[0] // YYYY-MM-DD
+    const dayKey = normalizeDayKey(sessionRow.date)
 
     const validStatuses = ['present', 'late', 'absent', 'excused']
     const finalStatus = validStatuses.includes(attendanceStatus) ? attendanceStatus : 'present'
@@ -91,6 +92,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       verified: 1,
       notes: notes || `Ditambahkan manual oleh ${teacher.name}`,
     })
+
+    // Manual attendance consumes one quota session per attended session,
+    // including multiple sessions on the same day.
+    if (finalStatus === 'present' || finalStatus === 'late') {
+      await db.insert(quotaDailyUsage).values({
+        id: newId('qdu'),
+        studentId: studentIdFinal,
+        sessionId,
+        dateKey: dayKey,
+      })
+
+      const [usageRow] = await db
+        .select({ n: count() })
+        .from(quotaDailyUsage)
+        .where(eq(quotaDailyUsage.studentId, studentIdFinal))
+      await db
+        .update(student)
+        .set({ sessionQuotaRemaining: Math.max(0, studentRow.sessionQuota - Number(usageRow?.n ?? 0)) })
+        .where(eq(student.id, studentIdFinal))
+    }
 
     return NextResponse.json({
       success: true,

@@ -64,9 +64,10 @@ const TEST_DDL = [
   `CREATE TABLE IF NOT EXISTS "QuotaDailyUsage" (
     "id" TEXT PRIMARY KEY,
     "studentId" TEXT NOT NULL,
+    "sessionId" TEXT,
     "dateKey" TEXT NOT NULL,
     "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
-    UNIQUE("studentId", "dateKey")
+    UNIQUE("studentId", "sessionId", "dateKey")
   );`,
   `CREATE TABLE IF NOT EXISTS "QuotaExcuse" (
     "id" TEXT PRIMARY KEY,
@@ -91,7 +92,6 @@ const TEST_DDL = [
 ]
 
 let client: Client
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let db: any
 let studentSeq = 0
 let courseSeq = 0
@@ -132,8 +132,9 @@ async function seedStudent(courseId: string, sessionQuota = 10, createdAt = '202
 }
 
 async function seedSession(courseId: string, date: string, status = 'scheduled') {
+  const id = newId('ses')
   await db.insert(session).values({
-    id: newId('ses'),
+    id,
     courseId,
     sessionNumber: 1,
     title: 'Sesi',
@@ -144,6 +145,7 @@ async function seedSession(courseId: string, date: string, status = 'scheduled')
     qrSecret: 'test-secret',
     createdAt: new Date().toISOString(),
   })
+  return id
 }
 
 async function seedExcuse(studentId: string, dateKey: string) {
@@ -170,6 +172,21 @@ async function usageKeys(studentId: string): Promise<string[]> {
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 describe('kuota harian (session days only, backfill)', () => {
+  it('manual attendance dapat memakai kuota dua kali pada tanggal yang sama', async () => {
+    const c = await makeCourse()
+    const s = await seedStudent(c, 10)
+    const firstSession = await seedSession(c, '2026-09-14')
+    const secondSession = await seedSession(c, '2026-09-14')
+
+    await db.insert(quotaDailyUsage).values([
+      { id: newId('qdu'), studentId: s, sessionId: firstSession, dateKey: '2026-09-14' },
+      { id: newId('qdu'), studentId: s, sessionId: secondSession, dateKey: '2026-09-14' },
+    ])
+
+    const rows = await db.select().from(quotaDailyUsage).where(eq(quotaDailyUsage.studentId, s))
+    expect(rows).toHaveLength(2)
+  })
+
   it('1. student normal → kuota berkurang 1 setiap hari yang ada sesi', async () => {
     const c = await makeCourse()
     const s = await seedStudent(c, 10)

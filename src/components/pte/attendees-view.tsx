@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   MoveDown,
   X,
-  Plus,
+  UserCheck,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -103,11 +103,9 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
   const [kickStudent, setKickStudent] = useState<Attendee | null>(null)
   const [kickSubmitting, setKickSubmitting] = useState(false)
 
-  // Manual add attendance state
-  const [addOpen, setAddOpen] = useState(false)
-  const [addStudentCode, setAddStudentCode] = useState('')
-  const [addStatus, setAddStatus] = useState<'present' | 'late'>('present')
-  const [addNote, setAddNote] = useState('')
+  // Manual attendance confirmation state
+  const [manualOpen, setManualOpen] = useState(false)
+  const [manualStudent, setManualStudent] = useState<Attendee | null>(null)
   const [addSubmitting, setAddSubmitting] = useState(false)
   const currentDayKey = data?.session.date.slice(0, 10)
 
@@ -154,6 +152,31 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
     setIzinStudent(student)
     setIzinNote('')
     setIzinOpen(true)
+  }
+
+  function openManualAttendanceDialog(student: Attendee) {
+    setManualStudent(student)
+    setManualOpen(true)
+  }
+
+  async function submitManualAttendance() {
+    if (!manualStudent) return
+    setAddSubmitting(true)
+    try {
+      await apiPost(`/api/sessions/${sessionId}/attendance-mgmt/add`, {
+        studentId: manualStudent.studentId,
+        status: 'present',
+      })
+      toast.success(`${manualStudent.name} berhasil diabsenkan`)
+      setManualOpen(false)
+      setManualStudent(null)
+      loadAttendees()
+    } catch (err: unknown) {
+      const e = err as { body?: { error?: string } }
+      toast.error(e.body?.error || 'Gagal mengabsenkan siswa')
+    } finally {
+      setAddSubmitting(false)
+    }
   }
 
   async function submitIzin() {
@@ -300,9 +323,6 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
             </Button>
           </div>
         </div>
-        <Button size="sm" onClick={() => { setAddStudentCode(''); setAddStatus('present'); setAddNote(''); setAddOpen(true) }} className="gap-1.5 shrink-0">
-          <Plus className="h-3.5 w-3.5" /> Tambah
-        </Button>
       </div>
 
       {/* List */}
@@ -370,15 +390,26 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                       )}
                       {/* Izin button */}
                       {canMarkIzin && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 gap-1 border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:bg-purple-950/30 dark:text-purple-300 dark:hover:bg-purple-950/50"
-                          onClick={() => openIzinDialog(a)}
-                        >
-                          <ShieldCheck className="h-3 w-3" />
-                          <span className="hidden sm:inline">Izin</span>
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1 border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:bg-purple-950/30 dark:text-purple-300 dark:hover:bg-purple-950/50"
+                            onClick={() => openIzinDialog(a)}
+                          >
+                            <ShieldCheck className="h-3 w-3" />
+                            <span className="hidden sm:inline">Izin</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                            onClick={() => openManualAttendanceDialog(a)}
+                          >
+                            <UserCheck className="h-3 w-3" />
+                            <span className="hidden sm:inline">Absenkan</span>
+                          </Button>
+                        </>
                       )}
                     </div>
                     <Badge variant="outline" className={`gap-1 border ${st.cls}`}>
@@ -595,99 +626,48 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Tambah Kehadiran Manual Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      {/* Manual attendance confirmation dialog */}
+      <Dialog open={manualOpen} onOpenChange={setManualOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl border-border/60">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-primary" />
-              Tambah Kehadiran Manual
+              <UserCheck className="h-5 w-5 text-emerald-600" />
+              Absenkan Siswa
             </DialogTitle>
             <DialogDescription>
-              Catat kehadiran siswa secara manual untuk sesi ini.
+              Apakah Anda yakin ingin mengabsenkan {manualStudent?.name} untuk sesi ini?
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-sm">Kode Siswa</Label>
-              <Input
-                value={addStudentCode}
-                onChange={(e) => setAddStudentCode(e.target.value.toUpperCase())}
-                placeholder="Masukkan kode siswa (mis: PTE001)"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Status Kehadiran</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={addStatus === 'present' ? 'default' : 'outline'}
-                  onClick={() => setAddStatus('present')}
-                  className="gap-1.5"
-                >
-                  <CheckCircle2 className="h-4 w-4" /> Hadir
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={addStatus === 'late' ? 'default' : 'outline'}
-                  onClick={() => setAddStatus('late')}
-                  className="gap-1.5"
-                >
-                  <Clock className="h-4 w-4" /> Terlambat
-                </Button>
+          <div className="py-2">
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
+                  {manualStudent?.studentCode.slice(-3)}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">{manualStudent?.name}</div>
+                  <div className="text-xs text-muted-foreground">{manualStudent?.studentCode}</div>
+                </div>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Catatan (opsional)</Label>
-              <Textarea
-                value={addNote}
-                onChange={(e) => setAddNote(e.target.value)}
-                placeholder="Mis: Absen manual oleh admin"
-                className="min-h-15 resize-none"
-              />
             </div>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={addSubmitting}>
+            <Button variant="outline" onClick={() => setManualOpen(false)} disabled={addSubmitting}>
               Batal
             </Button>
             <Button
-              onClick={async () => {
-                if (!addStudentCode) { toast.error('Masukkan kode siswa'); return }
-                setAddSubmitting(true)
-                try {
-                  await apiPost(`/api/sessions/${sessionId}/attendance-mgmt/add`, {
-                    studentCode: addStudentCode,
-                    status: addStatus,
-                    note: addNote || undefined,
-                  })
-                  toast.success('Kehadiran berhasil dicatat')
-                  setAddOpen(false)
-                  setAddStudentCode('')
-                  setAddNote('')
-                  loadAttendees()
-                } catch (err: unknown) {
-                  const e = err as { body?: { error?: string } }
-                  toast.error(e.body?.error || 'Gagal mencatat kehadiran')
-                } finally {
-                  setAddSubmitting(false)
-                }
-              }}
-              disabled={addSubmitting || !addStudentCode}
-              className="gap-1.5"
+              onClick={submitManualAttendance}
+              disabled={addSubmitting || !manualStudent}
+              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
             >
               {addSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Plus className="h-4 w-4" />
+                <UserCheck className="h-4 w-4" />
               )}
-              Catat Kehadiran
+              Absenkan
             </Button>
           </DialogFooter>
         </DialogContent>

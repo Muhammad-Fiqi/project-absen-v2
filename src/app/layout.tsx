@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ruang PTE Attendance",
+  title: "Ruang PTE",
   description: "Aplikasi absensi Ruang PTE",
-  keywords: ["PTE", "attendance", "absensi", "kursus", "QR", "siswa", "pengajar", "admin", "ruang pte"],
+  keywords: ["PTE", "attendance", "absensi", "kursus", "siswa", "pengajar", "admin", "ruang pte", "ruangpte", "ruang pte", "ruangpte.com", "ruang pte.com", "kampung inggris", "kampunginggris", "kampung inggris.com", "kampunginggris.com", "kursusan kampung inggris", "kursusankampunginggris", "whv", "study abroad", "studyabroad", "kampung inggris pare", "work abroad", "permanent residence", "whv australia", "whv new zealand", "whv canada"],
   authors: [{ name: "Ruang PTE" }],
   icons: {
     icon: "/logo.png",
