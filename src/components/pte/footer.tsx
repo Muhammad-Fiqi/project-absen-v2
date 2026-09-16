@@ -10,7 +10,7 @@ export function Footer() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5 text-primary" />
             <span>
-              <strong className="font-medium text-foreground">PTE Attendance</strong> · Sistem Absensi Anti-Curang
+              <strong className="font-medium text-foreground">Ruang PTE Dashboard</strong>
             </span>
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
