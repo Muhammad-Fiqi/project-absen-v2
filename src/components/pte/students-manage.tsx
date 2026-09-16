@@ -359,6 +359,10 @@ export function StudentsManage() {
               <Input type="number" min={1} max={100} value={form.sessionQuota} onChange={(e) => setForm({ ...form, sessionQuota: Number(e.target.value) })} />
             </div>
             <div className="space-y-1.5">
+              <Label className="text-xs">Password Saat Ini</Label>
+              <Input value={editingStudent?.currentPassword || '-'} readOnly className="bg-muted/50" />
+            </div>
+            <div className="space-y-1.5">
               <Label className="text-xs">PIN Baru (kosongkan jika tidak diubah)</Label>
               <Input value={form.pinHash} onChange={(e) => setForm({ ...form, pinHash: e.target.value })} placeholder="Biarkan kosong jika tidak ganti PIN" />
             </div>

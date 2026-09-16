@@ -28,6 +28,7 @@ import { toast } from 'sonner'
 
 interface ExcuseItem {
   id: string
+  source?: 'daily' | 'attendance'
   studentId: string
   studentName: string
   studentCode: string
@@ -71,7 +72,7 @@ export function ExcuseReviewPanel() {
     if (!cancelTarget) return
     setCancelling(true)
     try {
-      await apiDelete(`/api/student/excuses/${cancelTarget.id}`)
+      await apiDelete(`/api/student/excuses/${cancelTarget.id}?source=${cancelTarget.source || 'daily'}`)
       toast.success(`Izin ${cancelTarget.studentName} (${cancelTarget.studentCode}) dibatalkan`)
       setItems((prev) => prev.filter((i) => i.id !== cancelTarget.id))
       setCancelTarget(null)
@@ -136,6 +137,9 @@ export function ExcuseReviewPanel() {
                     <Badge variant="outline" className="gap-1 text-[10px] border-purple-300 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
                       <Users className="h-3 w-3" /> {r.studentCode}
                     </Badge>
+                    {r.source === 'attendance' && (
+                      <Badge variant="secondary" className="text-[10px]">Izin Pengajar</Badge>
+                    )}
                   </div>
                   {r.reason && (
                     <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{r.reason}</p>
@@ -164,7 +168,7 @@ export function ExcuseReviewPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle>Batalkan Izin</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin membatalkan izin <strong>{cancelTarget?.studentName}</strong> ({cancelTarget?.studentCode})? Jika dibatalkan, hari tersebut akan dihitung terhadap kuota siswa.
+              Apakah Anda yakin membatalkan izin <strong>{cancelTarget?.studentName}</strong> ({cancelTarget?.studentCode})? Kuota izin akan dikembalikan dan kuota absensi siswa tidak dikurangi.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

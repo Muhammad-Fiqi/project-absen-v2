@@ -115,6 +115,7 @@ export async function GET() {
       name: s.name,
       email: s.email,
       phone: s.phone,
+      currentPassword: s.pinHash,
       sessionQuota: s.sessionQuota,
       sessionQuotaRemaining: remaining,
       sessionsUsed: used,

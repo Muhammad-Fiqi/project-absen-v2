@@ -1,6 +1,6 @@
 import { and, count, eq, gte, isNotNull, lt, not } from 'drizzle-orm'
 import { db as sharedDb } from '@/lib/db'
-import { quotaDailyUsage, quotaExcuse, session, student, studentLeaveRequest } from '@/db/schema'
+import { attendance, quotaDailyUsage, quotaExcuse, session, student, studentLeaveRequest } from '@/db/schema'
 import { newId } from '@/lib/id'
 
 // Loosely typed DB handle so tests can pass their own drizzle/libsql instance.
@@ -77,7 +77,14 @@ export async function hasValidExcuseForDateWithDb(db: QuotaDb, studentId: string
     .where(and(eq(quotaExcuse.studentId, studentId), eq(quotaExcuse.dateKey, dateKey)))
     .limit(1)
 
-  return rows.length > 0
+  if (rows.length > 0) return true
+
+  const excusedAttendances = await db
+    .select({ id: attendance.id, date: session.date })
+    .from(attendance)
+    .innerJoin(session, eq(attendance.sessionId, session.id))
+    .where(and(eq(attendance.studentId, studentId), eq(attendance.status, 'excused')))
+  return excusedAttendances.some((row: { date: string }) => normalizeDayKey(row.date) === dateKey)
 }
 
 // Backward-compatible wrappers (no db param) for existing call sites.
@@ -157,7 +164,7 @@ export async function createExcuse(
 export async function cancelExcuseWithDb(
   db: QuotaDb,
   excuseId: string,
-  opts?: { startKey?: string }
+  _opts?: { startKey?: string }
 ): Promise<{ ok: boolean; error?: string; studentId?: string; dateKey?: string }> {
   const rows = await db
     .select()
@@ -168,15 +175,6 @@ export async function cancelExcuseWithDb(
   if (!exc) return { ok: false, error: 'Data izin tidak ditemukan' }
 
   await db.delete(quotaExcuse).where(eq(quotaExcuse.id, excuseId))
-
-  // The freed day is no longer exempt, so re-run the deduction to pick it up
-  // when the day passes (idempotent — days already charged stay charged).
-  // Best-effort: if it fails, the next cron/catch-up will still process it.
-  try {
-    await applyDailyQuotaDeductionWithDb(db, exc.studentId, yesterdayKey(), opts)
-  } catch {
-    // ignore — cancellation itself already succeeded
-  }
 
   return { ok: true, studentId: exc.studentId, dateKey: exc.dateKey }
 }

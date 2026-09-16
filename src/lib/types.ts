@@ -159,6 +159,7 @@ export interface StudentManageRow {
   name: string
   email: string | null
   phone: string | null
+  currentPassword: string | null
   sessionQuota: number
   sessionQuotaRemaining: number
   sessionsUsed: number

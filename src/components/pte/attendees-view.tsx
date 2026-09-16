@@ -37,6 +37,7 @@ import {
 import { apiGet, apiPost, apiDelete } from '@/lib/api-client'
 import { toast } from 'sonner'
 import type { AttendanceStatus } from '@/lib/types'
+import { sessionTimeLabel } from '@/lib/session-time'
 
 interface Attendee {
   studentId: string
@@ -61,6 +62,7 @@ interface SessionOption {
   date: string
   startTime: string
   endTime: string
+  mode: 'online' | 'offline'
   status: string
 }
 
@@ -78,7 +80,7 @@ const STATUS_STYLE: Record<string, { label: string; cls: string; icon: typeof Ch
 const QUICK_REASONS = ['Sakit', 'Urusan keluarga', 'Ujian sekolah', 'Acara sekolah', 'Lainnya']
 
 export function AttendeesView({ sessionId }: AttendeesViewProps) {
-  const [data, setData] = useState<{ attendees: Attendee[]; session: { title: string; sessionNumber: number; status: string } } | null>(null)
+  const [data, setData] = useState<{ attendees: Attendee[]; session: { title: string; sessionNumber: number; date: string; status: string } } | null>(null)
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [viewMode, setViewMode] = useState<'all' | 'attended'>('attended')
@@ -107,11 +109,12 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
   const [addStatus, setAddStatus] = useState<'present' | 'late'>('present')
   const [addNote, setAddNote] = useState('')
   const [addSubmitting, setAddSubmitting] = useState(false)
+  const currentDayKey = data?.session.date.slice(0, 10)
 
   const loadAttendees = useCallback(() => {
     let active = true
     setLoading(true)
-    apiGet<{ attendees: Attendee[]; session: { title: string; sessionNumber: number; status: string } }>(`/api/sessions/${sessionId}/attendees`)
+    apiGet<{ attendees: Attendee[]; session: { title: string; sessionNumber: number; date: string; status: string } }>(`/api/sessions/${sessionId}/attendees`)
       .then((d) => { if (active) setData(d) })
       .catch(() => {})
       .finally(() => { if (active) setLoading(false) })
@@ -122,9 +125,9 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
     try {
       // Fetch all sessions to populate the dropdown (excluding current session)
       const res = await apiGet<{ sessions: any[]; days: any[] }>('/api/sessions')
-      // Filter out the current session and only show scheduled/active sessions
+      // Filter out the current session and only show sessions on the same day.
       const filtered = res.sessions
-        .filter((s: any) => s.id !== sessionId && (s.status === 'scheduled' || s.status === 'active'))
+        .filter((s: any) => s.id !== sessionId && (s.status === 'scheduled' || s.status === 'active') && s.date.slice(0, 10) === currentDayKey)
         .map((s: any) => ({
           id: s.id,
           title: s.title,
@@ -132,6 +135,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
           date: s.date,
           startTime: s.startTime,
           endTime: s.endTime,
+          mode: s.mode,
           status: s.status
         }))
       setTargetSessions(filtered)
@@ -139,7 +143,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
       console.error('Failed to load sessions:', error)
       toast.error('Gagal memuat daftar sesi')
     }
-  }, [sessionId])
+  }, [sessionId, currentDayKey])
 
   useEffect(() => {
     const cleanup = loadAttendees()
@@ -505,7 +509,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                       </SelectItem>
                       {targetSessions.map((session) => (
                         <SelectItem key={session.id} value={session.id}>
-                          Sesi {session.sessionNumber}: {session.title} ({new Date(session.date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })})
+                          Sesi {session.mode === 'online' ? 'Online' : 'Offline'}: {sessionTimeLabel(session.startTime)} WIB
                         </SelectItem>
                       ))}
                     </>

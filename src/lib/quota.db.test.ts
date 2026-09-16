@@ -306,7 +306,7 @@ describe('izin harian (maks 5, anti duplikat)', () => {
     expect(r.ok).toBe(false)
   })
 
-  it('11b. batalkan izin → hari tersebut dihitung lagi terhadap kuota', async () => {
+  it('11b. batalkan izin → slot izin kembali tanpa mengurangi kuota absensi', async () => {
     const c = await makeCourse()
     const s = await seedStudent(c, 10)
     for (const d of ['2026-08-01', '2026-08-02', '2026-08-03']) await seedSession(c, d)
@@ -318,15 +318,15 @@ describe('izin harian (maks 5, anti duplikat)', () => {
     await applyDailyQuotaDeductionWithDb(db, s, '2026-08-02', { startKey: '2026-08-01' })
     expect(await usageKeys(s)).toEqual(['2026-08-01'])
 
-    // Batalkan izin → hari 2 kini harus dihitung lagi.
-    // cancelExcuseWithDb menjalankan catch-up hingga hari ini (nyata),
-    // karena itu hari 2 (dan hari sesi lain setelahnya) kan terisi.
+    // Batalkan izin → hari 2 tidak ditambahkan ke penggunaan kuota.
     const cancel = await cancelExcuseWithDb(db, created.item!.id, { startKey: '2026-08-01' })
     expect(cancel.ok).toBe(true)
     expect(cancel.dateKey).toBe('2026-08-02')
-    const keysAfter = await usageKeys(s)
-    expect(keysAfter).toContain('2026-08-01')
-    expect(keysAfter).toContain('2026-08-02')
+    expect(await usageKeys(s)).toEqual(['2026-08-01'])
+
+    // Slot izin yang dibatalkan dapat digunakan kembali.
+    const reused = await createExcuse(db, s, '2026-08-02', 'Izin digunakan kembali')
+    expect(reused.ok).toBe(true)
   })
 
   it('11c. batalkan izin yang tidak ada → ditolak', async () => {

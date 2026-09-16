@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { quotaExcuse, student } from '@/db/schema'
+import { attendance, quotaExcuse, session, student } from '@/db/schema'
 import { getCurrentStudent, getCurrentTeacher } from '@/lib/auth'
 import { createExcuse, dayKey } from '@/lib/quota'
 
@@ -25,21 +25,44 @@ export async function GET(req: NextRequest) {
       .where(eq(quotaExcuse.dateKey, date))
       .orderBy(quotaExcuse.createdAt)
 
+    const excusedRows = await db
+      .select({ attendanceId: attendance.id, studentId: attendance.studentId, date: session.date, reason: attendance.notes, createdAt: attendance.createdAt })
+      .from(attendance)
+      .innerJoin(session, eq(attendance.sessionId, session.id))
+      .where(eq(attendance.status, 'excused'))
+    const staffExcused = excusedRows.filter((row) => row.date.slice(0, 10) === date)
+
     const studentIds = Array.from(new Set(rows.map((r) => r.studentId)))
     const students = studentIds.length ? await db.select().from(student) : []
     const studentMap = new Map(students.map((s) => [s.id, s]))
 
-    return NextResponse.json({
-      date,
-      items: rows.map((r) => ({
-        id: r.id,
+    const dailyItems = rows.map((r) => ({
+      id: r.id,
+      source: 'daily' as const,
+      studentId: r.studentId,
+      studentName: studentMap.get(r.studentId)?.name ?? '',
+      studentCode: studentMap.get(r.studentId)?.studentCode ?? '',
+      dateKey: r.dateKey,
+      reason: r.reason,
+      createdAt: r.createdAt,
+    }))
+    const dailyKeys = new Set(dailyItems.map((item) => `${item.studentId}:${item.dateKey}`))
+    const attendanceItems = staffExcused
+      .filter((r) => !dailyKeys.has(`${r.studentId}:${date}`))
+      .map((r) => ({
+        id: r.attendanceId,
+        source: 'attendance' as const,
         studentId: r.studentId,
         studentName: studentMap.get(r.studentId)?.name ?? '',
         studentCode: studentMap.get(r.studentId)?.studentCode ?? '',
-        dateKey: r.dateKey,
-        reason: r.reason,
+        dateKey: date,
+        reason: r.reason?.replace(/^Izin:\s*/, '') || 'Diizinkan pengajar',
         createdAt: r.createdAt,
-      })),
+      }))
+
+    return NextResponse.json({
+      date,
+      items: [...dailyItems, ...attendanceItems],
     })
   }
 

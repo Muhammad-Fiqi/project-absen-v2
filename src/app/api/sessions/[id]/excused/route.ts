@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { session, attendance } from '@/db/schema'
+import { session, attendance, quotaDailyUsage } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 import { newId } from '@/lib/id'
 
@@ -32,6 +32,12 @@ export async function POST(
   if (!sessionRow) {
     return NextResponse.json({ error: 'Sesi tidak ditemukan' }, { status: 404 })
   }
+
+  const sessionDateKey = sessionRow.date.slice(0, 10)
+  // An approved teacher excuse restores the day if quota catch-up already ran.
+  await db
+    .delete(quotaDailyUsage)
+    .where(and(eq(quotaDailyUsage.studentId, studentId), eq(quotaDailyUsage.dateKey, sessionDateKey)))
 
   // Find existing attendance for this student in this session
   const existingRows = await db
@@ -75,9 +81,6 @@ export async function POST(
     })
   } else {
     // Create new excused attendance
-    const d = new Date(sessionRow.date)
-    const dk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-
     const [created] = await db
       .insert(attendance)
       .values({
@@ -85,7 +88,7 @@ export async function POST(
         sessionId,
         studentId,
         status: 'excused',
-        dayKey: dk,
+        dayKey: sessionDateKey,
         notes: `Izin: ${note || 'Tidak ada keterangan'}`,
         verified: 0, // excused does NOT consume quota
       })
