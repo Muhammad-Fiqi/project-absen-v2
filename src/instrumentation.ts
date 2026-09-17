@@ -12,10 +12,6 @@ export async function register() {
     try {
       const { ensureDummyTables } = await import('@/db/migrate')
       await ensureDummyTables()
-      const { forgiveLegacyQuotaUsage, processDailyQuotaCatchUp } = await import('@/lib/quota')
-      // Restore quota for absences recorded before the grace-period start key.
-      await forgiveLegacyQuotaUsage()
-      await processDailyQuotaCatchUp()
     } catch (err) {
       console.error('startup migration/catch-up failed', err)
     }

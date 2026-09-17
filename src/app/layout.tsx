@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ruangpte.com'),
   title: "Ruang PTE | Kursus PTE Academic di Kampung Inggris Pare",
   description: "Ruang PTE adalah pusat persiapan PTE Academic di Kampung Inggris Pare, Kediri, dengan sistem absensi siswa, jadwal kelas, dan dashboard pengajar.",
   keywords: [

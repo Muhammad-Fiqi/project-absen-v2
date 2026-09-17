@@ -187,6 +187,8 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
 
   const { student, course, quota, stats, today, upcomingDays, recentDays } = data
   const quotaPct = quota.total > 0 ? Math.round((quota.used / quota.total) * 100) : 0
+  const totalHadir = stats.present + stats.late
+  const totalBolos = Math.max(0, stats.totalCheckIns - totalHadir)
 
   return (
     <div className="animate-fade-in mx-auto max-w-6xl px-4 py-6">
@@ -291,15 +293,15 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
         <StatCard
           icon={CheckCircle2}
           label="Hadir"
-          value={stats.present}
+          value={totalHadir}
           sub={`${stats.late} terlambat`}
           tone="primary"
         />
         <StatCard
-          icon={CalendarDays}
-          label="Hari Hadir"
-          value={stats.uniqueDaysAttended}
-          sub="hari berbeda"
+          icon={TrendingUp}
+          label="Bolos"
+          value={totalBolos}
+          sub="total sesi dikurangi hadir"
           tone="default"
         />
         <StatCard
