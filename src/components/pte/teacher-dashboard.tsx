@@ -740,7 +740,7 @@ function CreateSessionDialog({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Pengajar</Label>
-              <Input value={form.teacher} onChange={(e) => setForm({ ...form, teacher: e.target.value })} placeholder="Mis. Mr Dimas" />
+              <Input value={form.teacher} onChange={(e) => setForm({ ...form, teacher: e.target.value })} placeholder="Mis. Mr Faisal" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

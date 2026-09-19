@@ -81,6 +81,7 @@ export interface DayGroup {
     platform: string | null
     room: string | null
     teacher: string | null
+    notes: string | null
     maxAttendees: number
     attendeeCount: number
     status: SessionStatus

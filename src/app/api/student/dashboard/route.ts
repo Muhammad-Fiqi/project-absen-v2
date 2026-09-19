@@ -180,6 +180,7 @@ export async function GET() {
           platform: s.platform,
           room: s.room,
           teacher: s.teacher,
+          notes: s.notes,
           maxAttendees: s.maxAttendees,
           attendeeCount: attendeeCounts.get(s.id) ?? 0,
           status: s.status as 'scheduled' | 'active' | 'completed' | 'cancelled',

@@ -76,7 +76,6 @@ export function Header({ role, user, onLogout }: HeaderProps) {
           ) : (
             <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin sm:hidden" />
-              <span className="hidden sm:inline">Memuat sesi…</span>
             </div>
           )}
         </div>

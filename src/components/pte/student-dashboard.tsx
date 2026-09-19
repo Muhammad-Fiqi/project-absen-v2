@@ -25,12 +25,22 @@ import {
   ChevronDown,
   ChevronUp,
   Users,
+  ExternalLink,
+  Link as LinkIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -99,6 +109,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
   const [excuseLoading, setExcuseLoading] = useState(false)
   const [excuseConfirmOpen, setExcuseConfirmOpen] = useState(false)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
+  const [meetingSession, setMeetingSession] = useState<{ platform: string | null; room: string } | null>(null)
   const [showAnnouncement, setShowAnnouncement] = useState(false)
   const [announcementLoaded, setAnnouncementLoaded] = useState(false)
 
@@ -379,8 +390,9 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
                 startTime: s.startTime,
                 endTime: s.endTime,
                 room: s.room,
-                notes: null,
+                notes: s.notes,
               })}
+              onOpenMeeting={(meeting) => setMeetingSession(meeting)}
             />
           </div>
         </div>
@@ -404,8 +416,8 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
             <EmptyState icon={Calendar} text="Tidak ada jadwal mendatang" />
           ) : (
             upcomingDays.slice(0, 10).map((d) => (
-              <DayGroupCard key={d.dayKey} day={d} quotaExhausted={quota.exhausted} expandedSession={expandedSession} onToggleExpand={setExpandedSession} onCheckIn={(s) => setFlowSession({
-                id: s.id, sessionNumber: s.sessionNumber, title: s.title, date: d.date, startTime: s.startTime, endTime: s.endTime, room: s.room, notes: null,
+              <DayGroupCard key={d.dayKey} day={d} quotaExhausted={quota.exhausted} expandedSession={expandedSession} onToggleExpand={setExpandedSession} onOpenMeeting={(meeting) => setMeetingSession(meeting)} onCheckIn={(s) => setFlowSession({
+                id: s.id, sessionNumber: s.sessionNumber, title: s.title, date: d.date, startTime: s.startTime, endTime: s.endTime, room: s.room, notes: s.notes,
               })} />
             ))
           )}
@@ -415,7 +427,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
             <EmptyState icon={History} text="Belum ada riwayat kehadiran" />
           ) : (
             recentDays.map((d) => (
-              <DayGroupCard key={d.dayKey} day={d} isHistory quotaExhausted={quota.exhausted} expandedSession={expandedSession} onToggleExpand={setExpandedSession} onCheckIn={() => {}} />
+              <DayGroupCard key={d.dayKey} day={d} isHistory quotaExhausted={quota.exhausted} expandedSession={expandedSession} onToggleExpand={setExpandedSession} onOpenMeeting={(meeting) => setMeetingSession(meeting)} onCheckIn={() => {}} />
             ))
           )}
         </TabsContent>
@@ -504,6 +516,8 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
       />
 
       <AnnouncementPopup isOpen={showAnnouncement} onClose={() => setShowAnnouncement(false)} />
+
+      <MeetingLinkDialog session={meetingSession} onClose={() => setMeetingSession(null)} />
     </div>
   )
 }
@@ -561,6 +575,7 @@ function DayGroupCard({
   onCheckIn,
   expandedSession,
   onToggleExpand,
+  onOpenMeeting,
 }: {
   day: DayGroup
   isToday?: boolean
@@ -569,6 +584,7 @@ function DayGroupCard({
   onCheckIn: (s: DayGroup['sessions'][number]) => void
   expandedSession: string | null
   onToggleExpand: (id: string | null) => void
+  onOpenMeeting: (session: { platform: string | null; room: string }) => void
 }) {
   const dateLabel = new Date(day.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const attendedSession = day.sessions.find((s) => s.id === day.attendedSessionId)
@@ -644,6 +660,27 @@ function DayGroupCard({
                     {s.teacher && <span>· {s.teacher}</span>}
                     {s.platform && <span>· {s.platform}</span>}
                   </div>
+                  {(s.mode === 'offline' && s.room || s.mode === 'online' && s.room && !/^https?:\/\//i.test(s.room)) && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                     Tempat: {s.room}
+                    </p>
+                  )}
+                  {s.notes && (
+                    <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+                      Catatan: {s.notes}
+                    </p>
+                  )}
+                  {s.mode === 'online' && s.room && /^https?:\/\//i.test(s.room) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 h-7 gap-1 px-2 text-[10px]"
+                      onClick={() => onOpenMeeting({ platform: s.platform, room: s.room! })}
+                    >
+                      <LinkIcon className="h-3 w-3" /> Masuk ke meeting
+                    </Button>
+                  )}
                   {/* Capacity indicator */}
                   <div className="mt-1 flex items-center gap-1.5 text-[11px]">
                     <Users className="h-3 w-3 text-muted-foreground" />
@@ -698,6 +735,46 @@ function DayGroupCard({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function MeetingLinkDialog({
+  session,
+  onClose,
+}: {
+  session: { platform: string | null; room: string } | null
+  onClose: () => void
+}) {
+  const isValidLink = !!session?.room && /^https?:\/\//i.test(session.room)
+
+  function openMeeting() {
+    if (!session || !isValidLink) return
+    window.open(session.room, '_blank', 'noopener,noreferrer,popup,width=1100,height=760')
+    onClose()
+  }
+
+  return (
+    <Dialog open={!!session} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Video className="h-4 w-4 text-primary" /> Masuk ke meeting
+          </DialogTitle>
+          <DialogDescription>
+            Link {session?.platform || 'meeting'} tersedia untuk sesi ini.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm break-all">
+          {session?.room}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>Batal</Button>
+          <Button type="button" onClick={openMeeting} disabled={!isValidLink} className="gap-1.5">
+            <ExternalLink className="h-4 w-4" /> Buka link
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

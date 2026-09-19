@@ -263,7 +263,7 @@ export function StaffManage() {
               <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Misal: Mr. Dimas S.Pd"
+                placeholder="Misal: Mr. Faisal"
                 required
               />
             </div>
@@ -273,7 +273,7 @@ export function StaffManage() {
               <Input
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
-                placeholder="Misal: dimas_pte"
+                placeholder="Misal: faisal_pte"
                 required
               />
             </div>
