@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import {
-  Calendar, Plus, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck, Layers,
+  Calendar, Plus, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck, Layers, Trophy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,6 +21,7 @@ import { StudentsManage } from './students-manage'
 import { ExtensionRequests } from './extension-requests'
 import { ExcuseReviewPanel } from './excuse-review-panel'
 import { BulkSessionDialog } from './bulk-session-dialog'
+import { LeaderboardPanel } from './leaderboard-panel'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
 import { sessionTimeLabel } from '@/lib/session-time'
@@ -261,6 +262,7 @@ export function TeacherDashboard() {
             )}
           </TabsTrigger>
           <TabsTrigger value="reports" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Laporan</TabsTrigger>
+          <TabsTrigger value="leaderboard" className="gap-1.5"><Trophy className="h-3.5 w-3.5" /> Leaderboard</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sessions" className="mt-0 animate-fade-in">
@@ -326,6 +328,10 @@ export function TeacherDashboard() {
 
         <TabsContent value="reports" className="mt-0 animate-fade-in">
           <ReportsView />
+        </TabsContent>
+
+        <TabsContent value="leaderboard" className="mt-0 animate-fade-in">
+          <LeaderboardPanel />
         </TabsContent>
       </Tabs>
 

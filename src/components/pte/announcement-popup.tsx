@@ -127,7 +127,7 @@ export function AnnouncementPopup({ isOpen, onClose }: { isOpen: boolean; onClos
                 </li>
                 <li className="flex items-start gap-1.5">
                   <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Ajukan paling lambat 3 hari sebelum hari-H cuti</span>
+                  <span>Ajukan mulai hari ini atau sebelum periode cuti dimulai</span>
                 </li>
               </ul>
             </div>

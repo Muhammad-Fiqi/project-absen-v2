@@ -69,9 +69,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: LeaveReq
   const [loadingList, setLoadingList] = useState(false)
 
   const minStart = useCallback(() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 3)
-    return dateInputValue(d)
+    return dateInputValue(new Date())
   }, [])
 
   const loadRequests = useCallback(async () => {
@@ -113,7 +111,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: LeaveReq
       return
     }
     if (!startDate || startTooSoon) {
-      toast.error('Cuti harus diajukan paling lambat 3 hari sebelum tanggal mulai')
+      toast.error('Tanggal mulai cuti tidak boleh sebelum hari ini')
       return
     }
     if (!endDate || rangeInvalid) {
@@ -155,7 +153,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: LeaveReq
           </DialogTitle>
           <DialogDescription>
             Cuti kelas mengecualikan kuota harian Anda selama periode cuti (beberapa hari). Pengajuan harus masuk{' '}
-            <strong>paling lambat 3 hari sebelum</strong> tanggal mulai, dan harus disetujui admin/tutor.
+            <strong>pada hari mulai atau sebelumnya</strong>, dan harus disetujui admin/tutor.
           </DialogDescription>
         </DialogHeader>
 
@@ -194,7 +192,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: LeaveReq
                 required
               />
               {startTooSoon && (
-                <p className="text-[10px] text-destructive">Minimal 3 hari sebelum tanggal mulai.</p>
+                <p className="text-[10px] text-destructive">Tanggal mulai tidak boleh sebelum hari ini.</p>
               )}
             </div>
             <div className="space-y-1.5">

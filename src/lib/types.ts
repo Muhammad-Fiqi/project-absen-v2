@@ -17,6 +17,8 @@ export interface StudentInfo {
   sessionsRemaining: number
   quotaExhausted: boolean
   quotaExtendedAt: string | null
+  isOnLeave?: boolean
+  leaveEndDate?: string | null
 }
 
 export interface TeacherInfo {
@@ -167,6 +169,9 @@ export interface StudentManageRow {
   sessionsRemaining: number
   quotaExhausted: boolean
   quotaExtendedAt: string | null
+  isOnLeave: boolean
+  leaveStartDate: string | null
+  leaveEndDate: string | null
   lastCheckIn: string | null
   uniqueDaysAttended: number
   extensions: Array<{

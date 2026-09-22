@@ -204,6 +204,7 @@ export function StudentsManage() {
                       <div className="flex items-center gap-2">
                         <span className="truncate text-sm font-medium">{s.name}</span>
                         <span className="text-[11px] text-muted-foreground">{s.studentCode}</span>
+                        {s.isOnLeave && <Badge variant="outline" className="h-5 gap-1 border-sky-300 bg-sky-50 px-1.5 text-[10px] text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">Sedang cuti</Badge>}
                         {s.quotaExhausted && <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">Habis</Badge>}
                         {!s.quotaExhausted && s.sessionsRemaining <= 2 && <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">Hampir Habis</Badge>}
                       </div>

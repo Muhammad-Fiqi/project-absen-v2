@@ -353,16 +353,17 @@ describe('izin harian (maks 5, anti duplikat)', () => {
 })
 
 describe('cuti kelas', () => {
-  it('12. cuti diajukan ≥3 hari sebelum mulai → diterima', () => {
+  it('12. cuti dapat diajukan mulai hari ini atau untuk tanggal berikutnya', () => {
     const now = new Date('2026-08-10T00:00:00')
-    expect(validateLeaveInput({ reason: 'Alasan cuti yang cukup panjang', startDate: '2026-08-13', endDate: '2026-08-15', now }).ok).toBe(true)
+    expect(validateLeaveInput({ reason: 'Alasan cuti yang cukup panjang', startDate: '2026-08-10', endDate: '2026-08-10', now }).ok).toBe(true)
+    expect(validateLeaveInput({ reason: 'Alasan cuti yang cukup panjang', startDate: '2026-08-11', endDate: '2026-08-15', now }).ok).toBe(true)
   })
 
-  it('13. cuti <3 hari sebelum mulai → ditolak', () => {
+  it('13. cuti dengan tanggal mulai yang sudah lewat → ditolak', () => {
     const now = new Date('2026-08-10T00:00:00')
-    const r = validateLeaveInput({ reason: 'Alasan cuti yang cukup panjang', startDate: '2026-08-12', endDate: '2026-08-14', now })
+    const r = validateLeaveInput({ reason: 'Alasan cuti yang cukup panjang', startDate: '2026-08-09', endDate: '2026-08-14', now })
     expect(r.ok).toBe(false)
-    expect(r.error).toContain('3 hari')
+    expect(r.error).toContain('sebelum hari ini')
   })
 
   it('14. alasan cuti wajib dan minimal 10 karakter', () => {

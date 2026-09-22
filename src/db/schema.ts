@@ -163,3 +163,66 @@ export const extensionRequest = sqliteTable('ExtensionRequest', {
   createdAt: text('createdAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
 })
 
+export const studentPoint = sqliteTable(
+  'StudentPoint',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('studentId').notNull(),
+    totalPoints: integer('totalPoints').notNull().default(0),
+    missionsCompleted: integer('missionsCompleted').notNull().default(0),
+    totalMissions: integer('totalMissions').notNull().default(0),
+    source: text('source').notNull().default('google_classroom'),
+    syncedAt: text('syncedAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (t) => ({
+    studentUnique: uniqueIndex('StudentPoint_student_unique').on(t.studentId),
+  })
+)
+
+export const missionProgress = sqliteTable(
+  'MissionProgress',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('studentId').notNull(),
+    missionKey: text('missionKey').notNull(),
+    name: text('name').notNull(),
+    completed: integer('completed').notNull().default(0),
+    target: integer('target').notNull().default(0),
+    points: integer('points').notNull().default(0),
+    maxPoints: integer('maxPoints').notNull().default(0),
+    updatedAt: text('updatedAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (t) => ({
+    studentMissionUnique: uniqueIndex('MissionProgress_student_mission_unique').on(t.studentId, t.missionKey),
+  })
+)
+
+export const certificateStatus = sqliteTable('CertificateStatus', {
+  id: text('id').primaryKey(),
+  studentId: text('studentId').notNull().unique(),
+  status: text('status').notNull().default('locked'),
+  pointsRequired: integer('pointsRequired').notNull().default(1000),
+  claimedAt: text('claimedAt'),
+  updatedAt: text('updatedAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
+})
+
+export const classroomLeaderboard = sqliteTable(
+  'ClassroomLeaderboard',
+  {
+    id: text('id').primaryKey(),
+    courseId: text('courseId').notNull(),
+    classroomUserId: text('classroomUserId').notNull(),
+    name: text('name').notNull(),
+    email: text('email'),
+    avatarUrl: text('avatarUrl'),
+    totalPoints: integer('totalPoints').notNull().default(0),
+    missionsCompleted: integer('missionsCompleted').notNull().default(0),
+    totalMissions: integer('totalMissions').notNull().default(0),
+    progressJson: text('progressJson').notNull().default('[]'),
+    syncedAt: text('syncedAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (t) => ({
+    courseUserUnique: uniqueIndex('ClassroomLeaderboard_course_user_unique').on(t.courseId, t.classroomUserId),
+  })
+)
+

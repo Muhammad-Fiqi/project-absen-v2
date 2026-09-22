@@ -26,10 +26,10 @@ describe('quota rules', () => {
     expect(result).toBe(true)
   })
 
-  it('rejects leave requests less than 3 days before the start date', () => {
+  it('allows leave requests starting today or later', () => {
     const now = new Date('2026-08-10T12:00:00Z')
-    expect(isLeaveRequestTooSoon(new Date('2026-08-12T00:00:00Z'), now)).toBe(true)
-    expect(isLeaveRequestTooSoon(new Date('2026-08-11T00:00:00Z'), now)).toBe(true)
+    expect(isLeaveRequestTooSoon(new Date('2026-08-10T00:00:00Z'), now)).toBe(false)
+    expect(isLeaveRequestTooSoon(new Date('2026-08-11T00:00:00Z'), now)).toBe(false)
     expect(isLeaveRequestTooSoon(new Date('2026-08-09T00:00:00Z'), now)).toBe(true)
   })
 })

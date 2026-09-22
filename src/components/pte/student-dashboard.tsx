@@ -58,6 +58,7 @@ import { LeaveRequestDialog } from './leave-request-dialog'
 import { AttendanceCalendar } from './attendance-calendar'
 import { SessionCapacity } from './session-capacity'
 import { AnnouncementPopup } from './announcement-popup'
+import { LeaderboardPanel } from './leaderboard-panel'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
 import { sessionTimeLabel } from '@/lib/session-time'
@@ -112,6 +113,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
   const [meetingSession, setMeetingSession] = useState<{ platform: string | null; room: string } | null>(null)
   const [showAnnouncement, setShowAnnouncement] = useState(false)
   const [announcementLoaded, setAnnouncementLoaded] = useState(false)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
 
   const loadExtRequests = useCallback(async () => {
     setExtLoading(true)
@@ -201,6 +203,10 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
   const totalHadir = stats.present + stats.late
   const totalBolos = Math.max(0, stats.totalCheckIns - totalHadir)
 
+  if (showLeaderboard) {
+    return <LeaderboardPanel showClassroomJoinCaption onBack={() => setShowLeaderboard(false)} />
+  }
+
   return (
     <div className="animate-fade-in mx-auto max-w-6xl px-4 py-6">
       {/* Welcome */}
@@ -208,13 +214,19 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div>
-              <h1 className="text-xl font-bold sm:text-2xl">Halo, {student.name.split(' ')[0]}! 👋</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold sm:text-2xl">Halo, {student.name.split(' ')[0]}! 👋</h1>
+                {student.isOnLeave && <Badge variant="outline" className="gap-1 border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300"><CalendarDays className="h-3 w-3" /> Sedang cuti</Badge>}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {course.name} · {student.studentCode}
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" onClick={() => setShowLeaderboard(true)} className="gap-1.5 bg-amber-500 text-white shadow-sm hover:bg-amber-600">
+              <GraduationCap className="h-3.5 w-3.5" /> Leaderboard
+            </Button>
             <Button variant="outline" size="sm" onClick={requestExcuse} disabled={excuseLoading || (data.quotaExcuseRemaining ?? 0) <= 0} className="gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5" />
               {excuseLoading ? 'Memproses...' : 'Izin'}

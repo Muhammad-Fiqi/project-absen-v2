@@ -52,9 +52,9 @@ Student harus mengisi:
 
 - Alasan cuti wajib diisi dan harus memiliki penjelasan yang cukup/masuk akal. 
 
-- Pengajuan cuti harus dilakukan **paling lambat 3 hari sebelum tanggal mulai cuti** . 
+- Pengajuan cuti dapat dilakukan **mulai hari yang sama dengan tanggal mulai cuti atau sebelumnya** . 
 
-- Pengajuan yang kurang dari 3 hari sebelum tanggal mulai cuti harus ditolak oleh sistem. 
+- Pengajuan dengan tanggal mulai yang sudah lewat harus ditolak oleh sistem. 
 
 - Pengajuan cuti harus memiliki status, minimal: 
 
@@ -140,7 +140,7 @@ Semua validasi berikut harus dilakukan di **backend/server** :
 
 - pencegahan duplicate izin; 
 
-- batas pengajuan cuti minimal 3 hari sebelumnya; 
+- batas pengajuan cuti: tanggal mulai tidak boleh sudah lewat;
 
 - validasi tanggal mulai dan selesai; 
 
@@ -184,9 +184,9 @@ Setelah implementasi selesai, lakukan testing terhadap minimal skenario berikut:
 
 - Student mencoba menggunakan izin dua kali pada tanggal yang sama → ditolak. 
 
-- Student mengajukan cuti lebih dari 3 hari sebelumnya → dapat diajukan. 
+- Student mengajukan cuti pada hari mulai atau sebelumnya → dapat diajukan.
 
-- Student mengajukan cuti kurang dari 3 hari sebelumnya → ditolak. 
+- Student mengajukan cuti dengan tanggal mulai yang sudah lewat → ditolak.
 
 - Admin/tutor menyetujui cuti → kuota tidak berkurang selama periode cuti. 
 
@@ -226,5 +226,5 @@ Setelah implementasi, jalankan testing dan debugging sampai seluruh acceptance c
 
 - **Cuti kelas** → pengecualian **beberapa hari** , harus diajukan dan disetujui admin/tutor. 
 
-Saya juga sengaja menambahkan aturan **"3 hari sebelumnya"** sebagai validasi backend. Misalnya cuti mulai **10 Agustus** , maka pengajuan harus sudah masuk paling lambat **7 Agustus** . Jika maksud Anda berbeda—misalnya _minimal 3 hari kerja_ atau _3×24 jam_ —aturan itu sebaiknya ditentukan secara eksplisit karena implementasinya berbeda. 
+Pengajuan cuti sekarang dapat dilakukan langsung pada hari mulai cuti, selama tanggal mulai tidak berada di masa lalu. Validasi 3 hari sebelumnya sudah tidak berlaku.
 

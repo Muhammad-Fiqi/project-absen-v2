@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { student, course, attendance, quotaExtension, adminUser, quotaDailyUsage } from '@/db/schema'
+import { student, course, attendance, quotaExtension, adminUser, quotaDailyUsage, studentLeaveRequest } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
 import { newId } from '@/lib/id'
+import { dayKey } from '@/lib/quota'
 import type { StudentManageRow } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -72,6 +73,16 @@ export async function GET() {
   }
 
   const students = await db.select().from(student).orderBy(student.studentCode)
+  const todayKey = dayKey(new Date())
+  const approvedLeaves = await db
+    .select({ studentId: studentLeaveRequest.studentId, startDate: studentLeaveRequest.startDate, endDate: studentLeaveRequest.endDate })
+    .from(studentLeaveRequest)
+    .where(eq(studentLeaveRequest.status, 'approved'))
+  const leaveByStudent = new Map(
+    approvedLeaves
+      .filter((leave) => leave.startDate <= todayKey && leave.endDate >= todayKey)
+      .map((leave) => [leave.studentId, leave] as const)
+  )
   const attendances = await db.select().from(attendance)
   const verifiedAttendances = attendances.filter((a) => a.verified)
   const usageRows = await db.select().from(quotaDailyUsage)
@@ -122,6 +133,9 @@ export async function GET() {
       sessionsRemaining: remaining,
       quotaExhausted: remaining <= 0,
       quotaExtendedAt: s.quotaExtendedAt,
+      isOnLeave: leaveByStudent.has(s.id),
+      leaveStartDate: leaveByStudent.get(s.id)?.startDate ?? null,
+      leaveEndDate: leaveByStudent.get(s.id)?.endDate ?? null,
       lastCheckIn,
       uniqueDaysAttended: uniqueDays,
       extensions: myExtensions.map((e) => ({

@@ -35,14 +35,15 @@ export function ReportsView() {
 
   if (loading) return <div className="flex h-40 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
   if (!data) return <div className="text-sm text-muted-foreground">Gagal memuat laporan.</div>
+  const reportData = data
 
   const pieData = [
-    { name: 'Hadir', value: data.overall.totalPresent, color: 'oklch(0.52 0.13 162)' },
-    { name: 'Terlambat', value: data.overall.totalLate, color: 'oklch(0.75 0.15 84)' },
+    { name: 'Hadir', value: reportData.overall.totalPresent, color: 'oklch(0.52 0.13 162)' },
+    { name: 'Terlambat', value: reportData.overall.totalLate, color: 'oklch(0.75 0.15 84)' },
   ].filter((d) => d.value > 0)
 
   // Per-day check-ins (last 14 days)
-  const dayChartData = data.perDay.slice(-14).map((d) => ({
+  const dayChartData = reportData.perDay.slice(-14).map((d) => ({
     name: new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
     Hadir: d.present,
     Terlambat: d.late,
@@ -50,19 +51,19 @@ export function ReportsView() {
   }))
 
   // Quota usage distribution
-  const ranked = [...data.perStudent].sort((a, b) => b.quotaUsagePct - a.quotaUsagePct)
+  const ranked = [...reportData.perStudent].sort((a, b) => b.quotaUsagePct - a.quotaUsagePct)
 
   function exportCsv() {
     const rows = [
       ['Kode', 'Nama', 'Kuota', 'Terpakai', 'Sisa', 'Hadir', 'Terlambat', 'Hari Hadir', 'Usage %', 'Diperpanjang'],
-      ...data.perStudent.map((s) => [s.studentCode, s.name, s.sessionQuota, s.sessionsUsed, s.sessionsRemaining, s.present, s.late, s.uniqueDaysAttended, s.quotaUsagePct, s.quotaExtendedAt || '']),
+      ...reportData.perStudent.map((s) => [s.studentCode, s.name, s.sessionQuota, s.sessionsUsed, s.sessionsRemaining, s.present, s.late, s.uniqueDaysAttended, s.quotaUsagePct, s.quotaExtendedAt || '']),
     ]
     const csv = rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `laporan-absensi-${data.course.code}.csv`
+    a.download = `laporan-absensi-${reportData.course.code}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -71,10 +72,10 @@ export function ReportsView() {
     <div className="space-y-5">
       {/* Overall */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <BigStat icon={TrendingUp} label="Tingkat Pakai Kuota" value={`${data.overall.quotaUsagePct}%`} sub={`${data.overall.totalCheckIns}/${data.overall.totalQuota} sesi`} tone="primary" />
-        <BigStat icon={Users} label="Total Siswa" value={data.course.totalStudents} sub={`${data.overall.uniqueDaysWithSessions} hari ada kelas`} tone="default" />
-        <BigStat icon={PackageOpen} label="Kuota Habis" value={data.overall.studentsExhausted} sub="perlu extend" tone="destructive" />
-        <BigStat icon={Zap} label="Hampir Habis" value={data.overall.studentsExpiring} sub="≤ 2 sisa" tone="amber" />
+        <BigStat icon={TrendingUp} label="Tingkat Pakai Kuota" value={`${reportData.overall.quotaUsagePct}%`} sub={`${reportData.overall.totalCheckIns}/${reportData.overall.totalQuota} sesi`} tone="primary" />
+        <BigStat icon={Users} label="Total Siswa" value={reportData.course.totalStudents} sub={`${reportData.overall.uniqueDaysWithSessions} hari ada kelas`} tone="default" />
+        <BigStat icon={PackageOpen} label="Kuota Habis" value={reportData.overall.studentsExhausted} sub="perlu extend" tone="destructive" />
+        <BigStat icon={Zap} label="Hampir Habis" value={reportData.overall.studentsExpiring} sub="≤ 2 sisa" tone="amber" />
       </div>
 
       <div className="flex justify-end">
@@ -126,7 +127,7 @@ export function ReportsView() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="max-h-80 divide-y divide-border/40 overflow-y-auto scrollbar-thin">
-            {[...data.perDay].reverse().slice(0, 21).map((d) => (
+            {[...reportData.perDay].reverse().slice(0, 21).map((d) => (
               <div key={d.dayKey} className="flex items-center gap-3 p-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">

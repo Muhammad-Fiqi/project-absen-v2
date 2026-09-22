@@ -44,7 +44,7 @@ export function isLeaveRequestTooSoon(startDate: Date | string, now: Date): bool
   const reference = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
   const diffDays = Math.round((startDay.getTime() - reference.getTime()) / 86400000)
-  return diffDays < 3
+  return diffDays < 0
 }
 
 export function shouldSkipDailyQuotaReduction(input: {
@@ -210,7 +210,7 @@ export function validateLeaveInput(input: {
 
   const now = input.now || new Date()
   if (isLeaveRequestTooSoon(start, now)) {
-    return { ok: false, error: 'Pengajuan cuti harus paling lambat 3 hari sebelum tanggal mulai cuti' }
+    return { ok: false, error: 'Tanggal mulai cuti tidak boleh sebelum hari ini' }
   }
 
   return { ok: true, reason, startDate, endDate }

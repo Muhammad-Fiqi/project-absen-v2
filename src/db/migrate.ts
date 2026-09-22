@@ -150,6 +150,51 @@ export async function ensureDummyTables() {
       "reviewNote" TEXT,
       "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     );
+
+    CREATE TABLE IF NOT EXISTS "StudentPoint" (
+      "id" TEXT PRIMARY KEY,
+      "studentId" TEXT NOT NULL UNIQUE,
+      "totalPoints" INTEGER NOT NULL DEFAULT 0,
+      "missionsCompleted" INTEGER NOT NULL DEFAULT 0,
+      "totalMissions" INTEGER NOT NULL DEFAULT 0,
+      "source" TEXT NOT NULL DEFAULT 'google_classroom',
+      "syncedAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS "MissionProgress" (
+      "id" TEXT PRIMARY KEY,
+      "studentId" TEXT NOT NULL,
+      "missionKey" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
+      "completed" INTEGER NOT NULL DEFAULT 0,
+      "target" INTEGER NOT NULL DEFAULT 0,
+      "points" INTEGER NOT NULL DEFAULT 0,
+      "maxPoints" INTEGER NOT NULL DEFAULT 0,
+      "updatedAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+      UNIQUE("studentId", "missionKey")
+    );
+
+    CREATE TABLE IF NOT EXISTS "CertificateStatus" (
+      "id" TEXT PRIMARY KEY,
+      "studentId" TEXT NOT NULL UNIQUE,
+      "status" TEXT NOT NULL DEFAULT 'locked',
+      "pointsRequired" INTEGER NOT NULL DEFAULT 1000,
+      "claimedAt" TEXT,
+      "updatedAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );
+
+    CREATE TABLE IF NOT EXISTS "ClassroomLeaderboard" (
+      "id" TEXT PRIMARY KEY,
+      "courseId" TEXT NOT NULL,
+      "classroomUserId" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
+      "email" TEXT,
+      "totalPoints" INTEGER NOT NULL DEFAULT 0,
+      "missionsCompleted" INTEGER NOT NULL DEFAULT 0,
+      "totalMissions" INTEGER NOT NULL DEFAULT 0,
+      "syncedAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+      UNIQUE("courseId", "classroomUserId")
+    );
   `
 
   // NOTE: libsql execute() does NOT allow multi-statement SQL strings.
@@ -197,6 +242,22 @@ export async function ensureDummyTables() {
     else if (typeof client.execute === 'function') await client.execute({ sql: alter })
   } catch {
     // The column already exists on current databases.
+  }
+
+  // Add coursework progress columns to ClassroomLeaderboard databases created
+  // before the leaderboard started exposing completed/total coursework.
+  for (const alter of [
+    'ALTER TABLE "ClassroomLeaderboard" ADD COLUMN "missionsCompleted" INTEGER NOT NULL DEFAULT 0;',
+    'ALTER TABLE "ClassroomLeaderboard" ADD COLUMN "totalMissions" INTEGER NOT NULL DEFAULT 0;',
+    'ALTER TABLE "ClassroomLeaderboard" ADD COLUMN "progressJson" TEXT NOT NULL DEFAULT \'[]\';',
+    'ALTER TABLE "ClassroomLeaderboard" ADD COLUMN "avatarUrl" TEXT;',
+  ]) {
+    try {
+      if (typeof client.query === 'function') await client.query(alter)
+      else if (typeof client.execute === 'function') await client.execute({ sql: alter })
+    } catch {
+      // The column already exists on current databases.
+    }
   }
 
   // Upgrade the old one-row-per-student-day quota table so manual attendance

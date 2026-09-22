@@ -88,7 +88,7 @@ export async function GET() {
     .select()
     .from(quotaExcuse)
     .where(and(eq(quotaExcuse.studentId, studentSess.id), eq(quotaExcuse.dateKey, todayKey)))
-  const [activeLeave] = await db
+  const approvedLeaves = await db
     .select()
     .from(studentLeaveRequest)
     .where(
@@ -97,7 +97,8 @@ export async function GET() {
         eq(studentLeaveRequest.status, 'approved')
       )
     )
-  const hasApprovedLeaveToday = !!activeLeave && activeLeave.startDate <= todayKey && activeLeave.endDate >= todayKey
+  const activeLeave = approvedLeaves.find((leave) => leave.startDate <= todayKey && leave.endDate >= todayKey)
+  const hasApprovedLeaveToday = !!activeLeave
 
   // All attendances for this student
   const attendances = await db
@@ -223,6 +224,8 @@ export async function GET() {
       sessionsRemaining,
       quotaExhausted,
       quotaExtendedAt: fullStudent.quotaExtendedAt,
+      isOnLeave: hasApprovedLeaveToday,
+      leaveEndDate: activeLeave?.endDate ?? null,
     },
     course: {
       code: courseRow.code,

@@ -23,6 +23,7 @@ import { ReportsView } from './reports-view'
 import { ExtensionRequests } from './extension-requests'
 import { ExcuseReviewPanel } from './excuse-review-panel'
 import { CoursesManage } from './courses-manage'
+import { LeaderboardPanel } from './leaderboard-panel'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
 import { sessionTimeLabel } from '@/lib/session-time'
@@ -470,6 +471,9 @@ export function AdminDashboard() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="leaderboard" className="gap-1.5 font-medium">
+            <BarChart3 className="h-4 w-4" /> Leaderboard
+          </TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Kelola Siswa */}
@@ -695,6 +699,10 @@ export function AdminDashboard() {
             onReview={reviewLeaveRequest}
             onRefresh={loadLeaveRequests}
           />
+        </TabsContent>
+
+        <TabsContent value="leaderboard" className="animate-fade-in space-y-4">
+          <LeaderboardPanel />
         </TabsContent>
       </Tabs>
 
