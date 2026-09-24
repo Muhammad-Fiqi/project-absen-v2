@@ -409,7 +409,7 @@ export function AdminDashboard() {
   return (
     <div className="animate-fade-in mx-auto max-w-7xl px-4 py-6">
       {/* Header Banner */}
-      <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-border/60 bg-gradient-to-r from-primary/10 via-blue-500/10 to-transparent p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-border/60 bg-linear-to-r from-primary/10 via-blue-500/10 to-transparent p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Badge className="bg-primary text-primary-foreground gap-1 px-2.5 py-0.5">

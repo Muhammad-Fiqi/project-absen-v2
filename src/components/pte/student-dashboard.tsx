@@ -327,14 +327,14 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
           sub="total sesi dikurangi hadir"
           tone="default"
         />
-        <StatCard
+        {/* <StatCard
           icon={TrendingUp}
           label="Total Absensi"
           value={stats.totalCheckIns}
           sub={`dari ${quota.total} kuota`}
           tone="default"
-        />
-        {stats.excused > 0 && (
+        /> */}
+        {stats.excused >= 0 && (
           <StatCard
             icon={ShieldCheck}
             label="Izin"

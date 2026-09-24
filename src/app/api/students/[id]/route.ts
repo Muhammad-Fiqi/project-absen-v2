@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const { id } = await params
     const body = await req.json()
-    const { name, email, phone, sessionQuota, pinHash, courseCode, courseId, reduceRemainingBy } = body
+    const { name, email, phone, sessionQuota, pinHash, courseCode, courseId, reduceRemainingBy, increaseRemainingBy } = body
 
     const existing = await db.select().from(student).where(eq(student.id, id)).limit(1)
     if (!existing[0]) {
@@ -49,6 +49,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (pinHash !== undefined && pinHash.trim().length > 0) updates.pinHash = pinHash.trim()
     if (courseCode !== undefined) updates.courseCode = courseCode.trim().toUpperCase()
     if (courseId !== undefined) updates.courseId = courseId || null
+    if (increaseRemainingBy !== undefined) {
+      const amount = Math.floor(Number(increaseRemainingBy))
+      if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ error: 'Penambahan sisa kuota tidak valid' }, { status: 400 })
+      const [usageRow] = await db.select({ n: count() }).from(quotaDailyUsage).where(eq(quotaDailyUsage.studentId, id))
+      const used = Number(usageRow?.n ?? 0)
+      const currentRemaining = Math.max(0, current.sessionQuota - used - current.manualQuotaReduction)
+      const newRemaining = currentRemaining + amount
+      if (newRemaining > current.sessionQuota) return NextResponse.json({ error: `Sisa kuota tidak boleh melebihi total kuota (${current.sessionQuota})` }, { status: 400 })
+      // Reduce manualQuotaReduction to increase remaining (can go negative to effectively add bonus)
+      updates.manualQuotaReduction = current.manualQuotaReduction - amount
+      updates.sessionQuotaRemaining = newRemaining
+    }
 
     if (Object.keys(updates).length > 0) {
       await db.update(student).set(updates).where(eq(student.id, id))

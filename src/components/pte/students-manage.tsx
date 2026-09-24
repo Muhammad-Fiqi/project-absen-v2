@@ -32,7 +32,7 @@ export function StudentsManage() {
   const [editingStudent, setEditingStudent] = useState<StudentManageRow | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0,
+    studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0, increaseRemainingBy: 0,
   })
 
   async function load() {
@@ -50,7 +50,7 @@ export function StudentsManage() {
   useEffect(() => { load() }, [])
 
   function resetForm() {
-    setForm({ studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0 })
+    setForm({ studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0, increaseRemainingBy: 0 })
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -83,6 +83,7 @@ export function StudentsManage() {
       sessionQuota: s.sessionQuota,
       pinHash: '',
       reduceRemainingBy: 0,
+      increaseRemainingBy: 0,
     })
     setEditOpen(true)
   }
@@ -360,12 +361,21 @@ export function StudentsManage() {
               <Label className="text-xs">Kuota Sesi</Label>
               <Input type="number" min={1} max={100} value={form.sessionQuota} onChange={(e) => setForm({ ...form, sessionQuota: Number(e.target.value) })} />
             </div>
-            <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
-              <Label className="text-xs text-amber-800 dark:text-amber-200">Kurangi Sisa Kuota</Label>
-              <Input type="number" min={0} max={editingStudent?.sessionsRemaining ?? 0} value={form.reduceRemainingBy} onChange={(e) => setForm({ ...form, reduceRemainingBy: Number(e.target.value) })} />
-              <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                Total kuota tetap {editingStudent?.sessionQuota ?? 0}. Sisa saat ini: {editingStudent?.sessionsRemaining ?? 0}. Nilai ini hanya mengurangi sisa kuota.
-              </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
+                <Label className="text-xs text-amber-800 dark:text-amber-200">Kurangi Sisa Kuota</Label>
+                <Input type="number" min={0} max={editingStudent?.sessionsRemaining ?? 0} value={form.reduceRemainingBy} onChange={(e) => setForm({ ...form, reduceRemainingBy: Number(e.target.value) })} />
+                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                  Sisa: {editingStudent?.sessionsRemaining ?? 0}. Akan menambah pemakaian.
+                </p>
+              </div>
+              <div className="space-y-1.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
+                <Label className="text-xs text-emerald-800 dark:text-emerald-200">Tambah Sisa Kuota</Label>
+                <Input type="number" min={0} max={50} value={form.increaseRemainingBy} onChange={(e) => setForm({ ...form, increaseRemainingBy: Number(e.target.value) })} />
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                  Sisa: {editingStudent?.sessionsRemaining ?? 0}. Baru: {((editingStudent?.sessionsRemaining ?? 0) + (form.increaseRemainingBy || 0))} sesi.
+                </p>
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Password Saat Ini</Label>
