@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       .from(quotaDailyUsage)
       .where(eq(quotaDailyUsage.studentId, studentRow.id))
     const sessionsUsed = Number(usedRow?.n ?? 0)
-    const sessionsRemaining = Math.max(0, studentRow.sessionQuota - sessionsUsed)
+    const sessionsRemaining = Math.max(0, studentRow.sessionQuota - sessionsUsed - studentRow.manualQuotaReduction)
 
     const studentInfo = {
       id: studentRow.id,

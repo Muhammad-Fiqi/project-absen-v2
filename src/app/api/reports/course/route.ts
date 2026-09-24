@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     const present = atts.filter((a) => a.status === 'present').length
     const late = atts.filter((a) => a.status === 'late').length
     const used = getUsage(st.id)
-    const remaining = Math.max(0, st.sessionQuota - used)
+    const remaining = Math.max(0, st.sessionQuota - used - st.manualQuotaReduction)
     const uniqueDays = new Set(atts.map((a) => a.dayKey)).size
     return {
       studentId: st.id,
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       present,
       late,
       uniqueDaysAttended: uniqueDays,
-      quotaUsagePct: st.sessionQuota > 0 ? Math.round((used / st.sessionQuota) * 100) : 0,
+      quotaUsagePct: st.sessionQuota > 0 ? Math.round(((used + st.manualQuotaReduction) / st.sessionQuota) * 100) : 0,
       quotaExtendedAt: st.quotaExtendedAt,
     }
   })
@@ -101,11 +101,11 @@ export async function GET(req: NextRequest) {
   const totalPresent = verifiedAttendances.filter((a) => a.status === 'present').length
   const totalLate = verifiedAttendances.filter((a) => a.status === 'late').length
   const totalQuota = students.reduce((sum, s) => sum + s.sessionQuota, 0)
-  const totalUsed = students.reduce((sum, s) => sum + getUsage(s.id), 0)
+  const totalUsed = students.reduce((sum, s) => sum + getUsage(s.id) + s.manualQuotaReduction, 0)
   const quotaUsagePct = totalQuota > 0 ? Math.round((totalUsed / totalQuota) * 100) : 0
-  const studentsExhausted = students.filter((s) => getUsage(s.id) >= s.sessionQuota).length
+  const studentsExhausted = students.filter((s) => getUsage(s.id) + s.manualQuotaReduction >= s.sessionQuota).length
   const studentsExpiring = students.filter((s) => {
-    const remaining = s.sessionQuota - getUsage(s.id)
+    const remaining = s.sessionQuota - getUsage(s.id) - s.manualQuotaReduction
     return remaining > 0 && remaining <= 2
   }).length
 

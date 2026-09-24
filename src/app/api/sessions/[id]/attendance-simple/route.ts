@@ -98,7 +98,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .from(quotaDailyUsage)
       .where(eq(quotaDailyUsage.studentId, studentSess.id))
     const dailyUsageCount = Number(dailyUsageRow?.n ?? 0)
-    const remaining = Math.max(0, fullStudent.sessionQuota - dailyUsageCount)
+    const remaining = Math.max(0, fullStudent.sessionQuota - dailyUsageCount - fullStudent.manualQuotaReduction)
     const hasLeave = await hasApprovedLeaveForDate(studentSess.id, dayKey)
     const hasExcuse = await hasValidExcuseForDate(studentSess.id, dayKey)
 

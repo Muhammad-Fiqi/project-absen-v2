@@ -6,7 +6,7 @@ import { getCurrentStudent } from '@/lib/auth'
 import { verifyQrPayload, verifyRotatingCode } from '@/lib/security'
 import type { AttendanceSubmitRequest, AttendanceSubmitResponse } from '@/lib/types'
 import { newId } from '@/lib/id'
-import { applyDailyQuotaDeduction, hasApprovedLeaveForDate, hasValidExcuseForDate, normalizeDayKey, yesterdayKey } from '@/lib/quota'
+import { applyDailyQuotaDeduction, completeApprovedLeaveOnAttendance, hasApprovedLeaveForDate, hasValidExcuseForDate, normalizeDayKey, yesterdayKey } from '@/lib/quota'
 
 export const runtime = 'nodejs'
 
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .from(quotaDailyUsage)
     .where(eq(quotaDailyUsage.studentId, studentSess.id))
   const dailyUsageCount = Number(dailyUsageRow?.n ?? 0)
-  const remaining = Math.max(0, fullStudent.sessionQuota - dailyUsageCount)
+  const remaining = Math.max(0, fullStudent.sessionQuota - dailyUsageCount - fullStudent.manualQuotaReduction)
   const hasLeave = await hasApprovedLeaveForDate(studentSess.id, sessionDateKey)
   const hasExcuse = await hasValidExcuseForDate(studentSess.id, sessionDateKey)
   const quotaOk = hasLeave || hasExcuse || remaining > 0
@@ -215,6 +215,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       notes: !verified ? `${verifyMethod === 'code' ? 'Kode' : 'QR'} verification failed or checks not passed` : null,
     })
     .returning()
+
+  if (verified) {
+    await completeApprovedLeaveOnAttendance(studentSess.id, dk)
+  }
 
   const newRemaining = remaining
   const response: AttendanceSubmitResponse = {

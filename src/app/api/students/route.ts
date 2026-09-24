@@ -111,7 +111,7 @@ export async function GET() {
   const rows: StudentManageRow[] = students.map((s) => {
     const atts = verifiedAttendances.filter((a) => a.studentId === s.id)
     const used = usageByStudent.get(s.id) ?? 0
-    const remaining = Math.max(0, s.sessionQuota - used)
+    const remaining = Math.max(0, s.sessionQuota - used - s.manualQuotaReduction)
     const uniqueDays = new Set(atts.map((a) => a.dayKey)).size
     const lastCheckIn = atts.length > 0
       ? atts.sort((a, b) => (a.checkInTime < b.checkInTime ? 1 : -1))[0].checkInTime
@@ -129,6 +129,7 @@ export async function GET() {
       currentPassword: s.pinHash,
       sessionQuota: s.sessionQuota,
       sessionQuotaRemaining: remaining,
+      manualQuotaReduction: s.manualQuotaReduction,
       sessionsUsed: used,
       sessionsRemaining: remaining,
       quotaExhausted: remaining <= 0,

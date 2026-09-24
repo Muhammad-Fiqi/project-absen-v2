@@ -165,6 +165,7 @@ export interface StudentManageRow {
   currentPassword: string | null
   sessionQuota: number
   sessionQuotaRemaining: number
+  manualQuotaReduction: number
   sessionsUsed: number
   sessionsRemaining: number
   quotaExhausted: boolean

@@ -91,7 +91,7 @@ export function TeacherDashboard() {
     reason: string
     startDate: string
     endDate: string
-    status: 'pending' | 'approved' | 'rejected'
+    status: 'pending' | 'approved' | 'rejected' | 'completed'
     reviewedBy: string | null
     reviewedAt: string | null
     reviewNote: string | null
@@ -357,7 +357,7 @@ function LeaveReviewPanel({
     reason: string
     startDate: string
     endDate: string
-    status: 'pending' | 'approved' | 'rejected'
+    status: 'pending' | 'approved' | 'rejected' | 'completed'
     reviewedBy: string | null
     reviewedAt: string | null
     reviewNote: string | null

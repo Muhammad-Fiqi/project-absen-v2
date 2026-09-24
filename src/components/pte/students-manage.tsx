@@ -32,7 +32,7 @@ export function StudentsManage() {
   const [editingStudent, setEditingStudent] = useState<StudentManageRow | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '',
+    studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0,
   })
 
   async function load() {
@@ -50,7 +50,7 @@ export function StudentsManage() {
   useEffect(() => { load() }, [])
 
   function resetForm() {
-    setForm({ studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '' })
+    setForm({ studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0 })
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -82,6 +82,7 @@ export function StudentsManage() {
       phone: s.phone || '',
       sessionQuota: s.sessionQuota,
       pinHash: '',
+      reduceRemainingBy: 0,
     })
     setEditOpen(true)
   }
@@ -358,6 +359,13 @@ export function StudentsManage() {
             <div className="space-y-1.5">
               <Label className="text-xs">Kuota Sesi</Label>
               <Input type="number" min={1} max={100} value={form.sessionQuota} onChange={(e) => setForm({ ...form, sessionQuota: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
+              <Label className="text-xs text-amber-800 dark:text-amber-200">Kurangi Sisa Kuota</Label>
+              <Input type="number" min={0} max={editingStudent?.sessionsRemaining ?? 0} value={form.reduceRemainingBy} onChange={(e) => setForm({ ...form, reduceRemainingBy: Number(e.target.value) })} />
+              <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                Total kuota tetap {editingStudent?.sessionQuota ?? 0}. Sisa saat ini: {editingStudent?.sessionsRemaining ?? 0}. Nilai ini hanya mengurangi sisa kuota.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Password Saat Ini</Label>

@@ -16,12 +16,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const { id } = await params
     const body = await req.json()
-    const { name, email, phone, sessionQuota, pinHash, courseCode, courseId } = body
+    const { name, email, phone, sessionQuota, pinHash, courseCode, courseId, reduceRemainingBy } = body
 
     const existing = await db.select().from(student).where(eq(student.id, id)).limit(1)
     if (!existing[0]) {
       return NextResponse.json({ error: 'Siswa tidak ditemukan' }, { status: 404 })
     }
+    const current = existing[0]
 
     const updates: Partial<typeof student.$inferInsert> = {}
     if (name !== undefined) updates.name = name.trim()
@@ -34,7 +35,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .from(quotaDailyUsage)
         .where(eq(quotaDailyUsage.studentId, id))
       updates.sessionQuota = newQuota
-      updates.sessionQuotaRemaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0))
+      updates.sessionQuotaRemaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0) - current.manualQuotaReduction)
+    }
+    if (reduceRemainingBy !== undefined) {
+      const amount = Math.floor(Number(reduceRemainingBy))
+      if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ error: 'Pengurangan kuota tidak valid' }, { status: 400 })
+      const [usageRow] = await db.select({ n: count() }).from(quotaDailyUsage).where(eq(quotaDailyUsage.studentId, id))
+      const remaining = Math.max(0, current.sessionQuota - Number(usageRow?.n ?? 0) - current.manualQuotaReduction)
+      if (amount > remaining) return NextResponse.json({ error: `Pengurangan melebihi sisa kuota (${remaining})` }, { status: 400 })
+      updates.manualQuotaReduction = current.manualQuotaReduction + amount
+      updates.sessionQuotaRemaining = remaining - amount
     }
     if (pinHash !== undefined && pinHash.trim().length > 0) updates.pinHash = pinHash.trim()
     if (courseCode !== undefined) updates.courseCode = courseCode.trim().toUpperCase()

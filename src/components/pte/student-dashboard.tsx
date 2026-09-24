@@ -87,7 +87,7 @@ interface LeaveRequestRow {
   reason: string
   startDate: string
   endDate: string
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'completed'
   reviewedAt: string | null
   reviewNote: string | null
   createdAt: string
@@ -905,6 +905,7 @@ function LeaveRequestsSection({
     pending: { label: 'Menunggu', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300/40', icon: Clock },
     approved: { label: 'Disetujui', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300/40', icon: CheckCircle2 },
     rejected: { label: 'Ditolak', cls: 'bg-destructive/10 text-destructive border-destructive/30', icon: X },
+    completed: { label: 'Selesai setelah hadir', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-300/40', icon: CheckCircle2 },
   }
 
   return (

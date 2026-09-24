@@ -10,6 +10,7 @@ import {
   canApplyExcuse,
   createExcuse,
   cancelExcuseWithDb,
+  completeApprovedLeaveOnAttendanceWithDb,
   validateLeaveInput,
 } from './quota'
 
@@ -37,6 +38,7 @@ const TEST_DDL = [
     "pinHash" TEXT,
     "sessionQuota" INTEGER NOT NULL DEFAULT 15,
     "sessionQuotaRemaining" INTEGER NOT NULL DEFAULT 15,
+    "manualQuotaReduction" INTEGER NOT NULL DEFAULT 0,
     "quotaExtendedAt" TEXT,
     "quotaNote" TEXT,
     "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
@@ -172,6 +174,20 @@ async function usageKeys(studentId: string): Promise<string[]> {
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 describe('kuota harian (session days only, backfill)', () => {
+  it('manual quota reduction lowers remaining without changing total quota', async () => {
+    const c = await makeCourse()
+    const s = await seedStudent(c, 10)
+    await seedSession(c, '2026-08-01')
+    await db.update(student).set({ manualQuotaReduction: 3 }).where(eq(student.id, s))
+
+    const res = await applyDailyQuotaDeductionWithDb(db, s, '2026-08-01', { startKey: '2026-08-01' })
+    const [savedStudent] = await db.select().from(student).where(eq(student.id, s))
+    expect(res.deducted).toBe(1)
+    expect(savedStudent.sessionQuota).toBe(10)
+    expect(savedStudent.manualQuotaReduction).toBe(3)
+    expect(savedStudent.sessionQuotaRemaining).toBe(6)
+  })
+
   it('manual attendance dapat memakai kuota dua kali pada tanggal yang sama', async () => {
     const c = await makeCourse()
     const s = await seedStudent(c, 10)
@@ -353,6 +369,18 @@ describe('izin harian (maks 5, anti duplikat)', () => {
 })
 
 describe('cuti kelas', () => {
+  it('menyelesaikan status cuti saat siswa berhasil absen pada periode cuti', async () => {
+    const c = await makeCourse()
+    const s = await seedStudent(c, 10)
+    await seedLeave(s, '2026-08-10', '2026-08-12', 'approved')
+
+    const result = await completeApprovedLeaveOnAttendanceWithDb(db, s, '2026-08-10')
+    expect(result.completed).toBe(true)
+
+    const [leave] = await db.select().from(studentLeaveRequest)
+    expect(leave.status).toBe('completed')
+  })
+
   it('12. cuti dapat diajukan mulai hari ini atau untuk tanggal berikutnya', () => {
     const now = new Date('2026-08-10T00:00:00')
     expect(validateLeaveInput({ reason: 'Alasan cuti yang cukup panjang', startDate: '2026-08-10', endDate: '2026-08-10', now }).ok).toBe(true)

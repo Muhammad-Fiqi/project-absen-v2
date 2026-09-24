@@ -27,7 +27,7 @@ interface LeaveRequestRow {
   reason: string
   startDate: string
   endDate: string
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'completed'
   reviewedAt: string | null
   reviewNote: string | null
   createdAt: string
@@ -51,6 +51,11 @@ const STATUS_META: Record<
     label: 'Ditolak',
     icon: XCircle,
     cls: 'bg-destructive/10 text-destructive border-destructive/30',
+  },
+  completed: {
+    label: 'Selesai setelah hadir',
+    icon: CheckCircle2,
+    cls: 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-300/40',
   },
 }
 

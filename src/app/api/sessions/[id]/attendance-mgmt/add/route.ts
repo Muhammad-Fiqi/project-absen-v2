@@ -109,7 +109,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .where(eq(quotaDailyUsage.studentId, studentIdFinal))
       await db
         .update(student)
-        .set({ sessionQuotaRemaining: Math.max(0, studentRow.sessionQuota - Number(usageRow?.n ?? 0)) })
+        .set({ sessionQuotaRemaining: Math.max(0, studentRow.sessionQuota - Number(usageRow?.n ?? 0) - studentRow.manualQuotaReduction) })
         .where(eq(student.id, studentIdFinal))
     }
 

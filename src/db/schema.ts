@@ -43,6 +43,7 @@ export const student = sqliteTable('Student', {
   pinHash: text('pinHash'),
   sessionQuota: integer('sessionQuota').notNull().default(15),
   sessionQuotaRemaining: integer('sessionQuotaRemaining').notNull().default(15),
+  manualQuotaReduction: integer('manualQuotaReduction').notNull().default(0),
   quotaExtendedAt: text('quotaExtendedAt'),
   quotaNote: text('quotaNote'),
   createdAt: text('createdAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),

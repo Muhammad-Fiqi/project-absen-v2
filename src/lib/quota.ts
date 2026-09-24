@@ -92,6 +92,34 @@ export async function hasApprovedLeaveForDate(studentId: string, dateKey: string
   return hasApprovedLeaveForDateWithDb(sharedDb, studentId, dateKey)
 }
 
+export async function completeApprovedLeaveOnAttendanceWithDb(
+  db: QuotaDb,
+  studentId: string,
+  attendanceDateKey: string,
+): Promise<{ completed: boolean; leaveId?: string }> {
+  const rows = await db
+    .select({ id: studentLeaveRequest.id, startDate: studentLeaveRequest.startDate, endDate: studentLeaveRequest.endDate })
+    .from(studentLeaveRequest)
+    .where(and(eq(studentLeaveRequest.studentId, studentId), eq(studentLeaveRequest.status, 'approved')))
+
+  const activeLeave = rows.find((leave: { startDate: string; endDate: string }) => leave.startDate <= attendanceDateKey && leave.endDate >= attendanceDateKey)
+  if (!activeLeave) return { completed: false }
+
+  await db
+    .update(studentLeaveRequest)
+    .set({ status: 'completed', reviewedAt: new Date().toISOString() })
+    .where(eq(studentLeaveRequest.id, activeLeave.id))
+
+  return { completed: true, leaveId: activeLeave.id }
+}
+
+export async function completeApprovedLeaveOnAttendance(
+  studentId: string,
+  attendanceDateKey: string,
+): Promise<{ completed: boolean; leaveId?: string }> {
+  return completeApprovedLeaveOnAttendanceWithDb(sharedDb, studentId, attendanceDateKey)
+}
+
 export async function hasValidExcuseForDate(studentId: string, dateKey: string): Promise<boolean> {
   return hasValidExcuseForDateWithDb(sharedDb, studentId, dateKey)
 }
@@ -261,10 +289,11 @@ export async function applyDailyQuotaDeductionWithDb(
     .where(and(eq(quotaDailyUsage.studentId, studentId), gte(quotaDailyUsage.dateKey, startKey)))
   const usageSet: Set<string> = new Set(usageRows.map((r: { dateKey: string }) => r.dateKey))
   let usedCount = usageRows.length
+  const quotaCapacity = Math.max(0, studentRow.sessionQuota - studentRow.manualQuotaReduction)
 
   await db
     .update(student)
-    .set({ sessionQuotaRemaining: Math.max(0, studentRow.sessionQuota - usedCount) })
+    .set({ sessionQuotaRemaining: Math.max(0, quotaCapacity - usedCount) })
     .where(eq(student.id, studentId))
 
   // Approved leave ranges (once) → per-day range check in the loop.
@@ -292,7 +321,7 @@ export async function applyDailyQuotaDeductionWithDb(
   let skippedExcuse = 0
 
   for (const k of candidateKeys) {
-    if (usedCount + inserted >= studentRow.sessionQuota) {
+    if (usedCount + inserted >= quotaCapacity) {
       await db
         .update(student)
         .set({ sessionQuotaRemaining: 0 })
@@ -316,10 +345,10 @@ export async function applyDailyQuotaDeductionWithDb(
 
   await db
     .update(student)
-    .set({ sessionQuotaRemaining: Math.max(0, studentRow.sessionQuota - usedCount - inserted) })
+    .set({ sessionQuotaRemaining: Math.max(0, quotaCapacity - usedCount - inserted) })
     .where(eq(student.id, studentId))
 
-  return { deducted: inserted, quotaExhausted: usedCount + inserted >= studentRow.sessionQuota, skippedLeave, skippedExcuse }
+  return { deducted: inserted, quotaExhausted: usedCount + inserted >= quotaCapacity, skippedLeave, skippedExcuse }
 }
 
 function lastKey(set: Set<string>): string | null {

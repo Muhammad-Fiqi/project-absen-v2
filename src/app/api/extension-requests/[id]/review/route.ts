@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .select({ n: count() })
     .from(quotaDailyUsage)
     .where(eq(quotaDailyUsage.studentId, request.studentId))
-  const remaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0))
+  const remaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0) - studentRow.manualQuotaReduction)
 
   await db.transaction(async (tx) => {
     await tx

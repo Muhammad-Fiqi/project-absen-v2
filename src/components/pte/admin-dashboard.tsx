@@ -91,7 +91,7 @@ function LeaveReviewPanel({
     reason: string
     startDate: string
     endDate: string
-    status: 'pending' | 'approved' | 'rejected'
+    status: 'pending' | 'approved' | 'rejected' | 'completed'
     reviewedBy: string | null
     reviewedAt: string | null
     reviewNote: string | null
@@ -232,7 +232,7 @@ export function AdminDashboard() {
     reason: string
     startDate: string
     endDate: string
-    status: 'pending' | 'approved' | 'rejected'
+    status: 'pending' | 'approved' | 'rejected' | 'completed'
     reviewedBy: string | null
     reviewedAt: string | null
     reviewNote: string | null

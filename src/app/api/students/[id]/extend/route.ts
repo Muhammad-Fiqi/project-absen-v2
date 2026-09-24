@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .select({ n: count() })
     .from(quotaDailyUsage)
     .where(eq(quotaDailyUsage.studentId, id))
-  const remaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0))
+  const remaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0) - studentRow.manualQuotaReduction)
 
   // Update student + create extension audit log in a transaction
   const [updated] = await db.transaction(async (tx) => {

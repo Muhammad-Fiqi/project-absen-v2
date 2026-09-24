@@ -75,7 +75,7 @@ export async function GET() {
     .from(quotaDailyUsage)
     .where(eq(quotaDailyUsage.studentId, studentSess.id))
   const sessionsUsed = Number(dailyUsageRow?.n ?? 0)
-  const sessionsRemaining = Math.max(0, fullStudent.sessionQuota - sessionsUsed)
+  const sessionsRemaining = Math.max(0, fullStudent.sessionQuota - sessionsUsed - fullStudent.manualQuotaReduction)
   const quotaExhausted = sessionsRemaining <= 0
 
   const [excuseUsageRow] = await db
