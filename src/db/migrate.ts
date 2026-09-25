@@ -88,16 +88,6 @@ export async function ensureDummyTables() {
       UNIQUE("sessionId", "studentId")
     );
 
-    CREATE TABLE IF NOT EXISTS "QrToken" (
-      "id" TEXT PRIMARY KEY,
-      "sessionId" TEXT NOT NULL,
-      "token" TEXT NOT NULL UNIQUE,
-      "hmac" TEXT NOT NULL,
-      "issuedAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
-      "expiresAt" TEXT NOT NULL,
-      "used" INTEGER NOT NULL DEFAULT 0
-    );
-
     CREATE TABLE IF NOT EXISTS "QuotaExtension" (
       "id" TEXT PRIMARY KEY,
       "studentId" TEXT NOT NULL,

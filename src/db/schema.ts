@@ -90,16 +90,6 @@ export const attendance = sqliteTable(
   })
 )
 
-export const qrToken = sqliteTable('QrToken', {
-  id: text('id').primaryKey(),
-  sessionId: text('sessionId').notNull(),
-  token: text('token').notNull().unique(),
-  hmac: text('hmac').notNull(),
-  issuedAt: text('issuedAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
-  expiresAt: text('expiresAt').notNull(),
-  used: integer('used', { mode: 'number' }).notNull().default(0),
-})
-
 export const quotaExtension = sqliteTable('QuotaExtension', {
   id: text('id').primaryKey(),
   studentId: text('studentId').notNull(),
