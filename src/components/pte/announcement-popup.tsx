@@ -108,6 +108,10 @@ export function AnnouncementPopup({ isOpen, onClose }: { isOpen: boolean; onClos
                   <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>Maksimal <strong>izin 5 kali</strong> per akun</span>
                 </li>
+                <li className="flex items-start gap-1.5">
+                  <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>Izin dilakukan di hari-H berhalangan hadir</span>
+                </li>
               </ul>
             </div>
 
