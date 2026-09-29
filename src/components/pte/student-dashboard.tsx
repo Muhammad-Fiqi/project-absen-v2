@@ -227,10 +227,10 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
             <Button type="button" size="sm" onClick={() => setShowLeaderboard(true)} className="gap-1.5 bg-amber-500 text-white shadow-sm hover:bg-amber-600">
               <GraduationCap className="h-3.5 w-3.5" /> Leaderboard
             </Button>
-            <Button variant="outline" size="sm" onClick={requestExcuse} disabled={excuseLoading || (data.quotaExcuseRemaining ?? 0) <= 0} className="gap-1.5">
+            {/* <Button variant="outline" size="sm" onClick={requestExcuse} disabled={excuseLoading || (data.quotaExcuseRemaining ?? 0) <= 0} className="gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5" />
               {excuseLoading ? 'Memproses...' : 'Izin'}
-            </Button>
+            </Button> */}
             <Button variant="outline" size="sm" onClick={requestLeaveClass} className="gap-1.5">
               <CalendarDays className="h-3.5 w-3.5" />
               Ajukan Permintaan Cuti Kelas
@@ -243,12 +243,12 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
         </div>
       </div>
 
-      {typeof data.quotaExcuseRemaining === 'number' && (
+      {/* {typeof data.quotaExcuseRemaining === 'number' && (
         <div className="mb-4 flex items-center justify-between rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-700 dark:border-purple-800 dark:bg-purple-950/20 dark:text-purple-200">
           <span className="font-medium">Sisa izin: {data.quotaExcuseRemaining}/{5}</span>
           <Badge variant="outline" className="border-purple-300 bg-transparent text-purple-700 dark:text-purple-200">Izin harian</Badge>
         </div>
-      )}
+      )} */}
 
       {/* QUOTA BANNER — most important */}
       {quota.exhausted ? (
@@ -305,7 +305,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
       ) : null}
 
       {/* Stats grid */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-3 gap-3">
         <StatCard
           icon={PackageOpen}
           label="Sisa Kuota"
@@ -333,7 +333,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
           value={stats.totalCheckIns}
           sub={`dari ${quota.total} kuota`}
           tone="default"
-        /> */}
+        />
         {stats.excused >= 0 && (
           <StatCard
             icon={ShieldCheck}
@@ -342,7 +342,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
             sub="tidak mengurangi kuota"
             tone="purple"
           />
-        )}
+        )} */}
       </div>
 
       {/* Quota progress */}
@@ -556,7 +556,7 @@ function StatCard({
   }[tone]
   return (
     <Card className="border-border/60 transition-transform hover:-translate-y-0.5 hover:shadow-md">
-      <CardContent className="p-4">
+      <CardContent className="px-4">
         <div className="mb-2 flex items-center justify-between">
           <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${toneClasses}`}>
             <Icon className="h-4 w-4" />

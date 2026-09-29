@@ -35,13 +35,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .from(quotaDailyUsage)
         .where(eq(quotaDailyUsage.studentId, id))
       updates.sessionQuota = newQuota
-      updates.sessionQuotaRemaining = Math.max(0, newQuota - Number(usageRow?.n ?? 0) - current.manualQuotaReduction)
+      // Don't set sessionQuotaRemaining here if reduceRemainingBy is also being processed
+      // We'll calculate it after all operations
     }
     if (reduceRemainingBy !== undefined) {
       const amount = Math.floor(Number(reduceRemainingBy))
       if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ error: 'Pengurangan kuota tidak valid' }, { status: 400 })
       const [usageRow] = await db.select({ n: count() }).from(quotaDailyUsage).where(eq(quotaDailyUsage.studentId, id))
-      const remaining = Math.max(0, current.sessionQuota - Number(usageRow?.n ?? 0) - current.manualQuotaReduction)
+      // Use updated quota if sessionQuota is also being changed
+      const effectiveQuota = updates.sessionQuota !== undefined ? updates.sessionQuota : current.sessionQuota
+      const remaining = Math.max(0, effectiveQuota - Number(usageRow?.n ?? 0) - current.manualQuotaReduction)
       if (amount > remaining) return NextResponse.json({ error: `Pengurangan melebihi sisa kuota (${remaining})` }, { status: 400 })
       updates.manualQuotaReduction = current.manualQuotaReduction + amount
       updates.sessionQuotaRemaining = remaining - amount
@@ -54,12 +57,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ error: 'Penambahan sisa kuota tidak valid' }, { status: 400 })
       const [usageRow] = await db.select({ n: count() }).from(quotaDailyUsage).where(eq(quotaDailyUsage.studentId, id))
       const used = Number(usageRow?.n ?? 0)
-      const currentRemaining = Math.max(0, current.sessionQuota - used - current.manualQuotaReduction)
+      // Use updated quota if sessionQuota is also being changed
+      const effectiveQuota = updates.sessionQuota !== undefined ? updates.sessionQuota : current.sessionQuota
+      const currentRemaining = Math.max(0, effectiveQuota - used - current.manualQuotaReduction)
       const newRemaining = currentRemaining + amount
-      if (newRemaining > current.sessionQuota) return NextResponse.json({ error: `Sisa kuota tidak boleh melebihi total kuota (${current.sessionQuota})` }, { status: 400 })
-      // Reduce manualQuotaReduction to increase remaining (can go negative to effectively add bonus)
+      if (newRemaining > effectiveQuota) return NextResponse.json({ error: `Sisa kuota tidak boleh melebihi total kuota (${effectiveQuota})` }, { status: 400 })
       updates.manualQuotaReduction = current.manualQuotaReduction - amount
       updates.sessionQuotaRemaining = newRemaining
+    }
+    // If only sessionQuota was changed (without reduce/increase), calculate remaining
+    if (updates.sessionQuota !== undefined && !updates.sessionQuotaRemaining && reduceRemainingBy === undefined && increaseRemainingBy === undefined) {
+      const [usageRow] = await db.select({ n: count() }).from(quotaDailyUsage).where(eq(quotaDailyUsage.studentId, id))
+      updates.sessionQuotaRemaining = Math.max(0, updates.sessionQuota - Number(usageRow?.n ?? 0) - current.manualQuotaReduction)
     }
 
     if (Object.keys(updates).length > 0) {

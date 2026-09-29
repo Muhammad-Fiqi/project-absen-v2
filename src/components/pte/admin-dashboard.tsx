@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  ShieldCheck, Users, Calendar, UserCheck, BarChart3, Layers, Plus, RefreshCw, Loader2, Play, CheckCircle2, AlertCircle, Clock, MapPin, Building2, Video, Sparkles, MailCheck, BookOpen, Edit3, Trash2,
+  ShieldCheck, Users, UserX, Calendar, UserCheck, BarChart3, Layers, Plus, RefreshCw, Loader2, Play, CheckCircle2, AlertCircle, Clock, MapPin, Building2, Video, Sparkles, MailCheck, BookOpen, Edit3, Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,6 +24,7 @@ import { ExtensionRequests } from './extension-requests'
 import { ExcuseReviewPanel } from './excuse-review-panel'
 import { CoursesManage } from './courses-manage'
 import { LeaderboardPanel } from './leaderboard-panel'
+import { AbsencesPanel } from './absences-panel'
 import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
 import { sessionTimeLabel } from '@/lib/session-time'
@@ -474,6 +475,9 @@ export function AdminDashboard() {
           <TabsTrigger value="leaderboard" className="gap-1.5 font-medium">
             <BarChart3 className="h-4 w-4" /> Leaderboard
           </TabsTrigger>
+          <TabsTrigger value="absences" className="gap-1.5 font-medium">
+            <UserX className="h-4 w-4" /> Rekap Bolos
+          </TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Kelola Siswa */}
@@ -703,6 +707,10 @@ export function AdminDashboard() {
 
         <TabsContent value="leaderboard" className="animate-fade-in space-y-4">
           <LeaderboardPanel />
+        </TabsContent>
+
+        <TabsContent value="absences" className="animate-fade-in space-y-4">
+          <AbsencesPanel />
         </TabsContent>
       </Tabs>
 

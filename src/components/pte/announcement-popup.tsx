@@ -84,7 +84,7 @@ export function AnnouncementPopup({ isOpen, onClose }: { isOpen: boolean; onClos
               </li>
               <li className="flex items-start gap-2">
                 <Check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
-                <span>Selalu gunakan fitur <strong>izin</strong> atau <strong>ajukan cuti</strong> jika berhalangan hadir agar kuota absen tidak terpotong</span>
+                <span>Student tidak dianjur kan untuk <strong>bolos</strong> karena dapat melompati materi yang disampaikan, jika student tetap bolos maka materi yang tertinggal tidak dapat diulang dengan alasan apapun</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
@@ -102,15 +102,7 @@ export function AnnouncementPopup({ isOpen, onClose }: { isOpen: boolean; onClos
               <ul className="space-y-1 text-sm text-purple-700 dark:text-purple-300">
                 <li className="flex items-start gap-1.5">
                   <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Mengecualikan potongan kuota hari ini</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Maksimal <strong>izin 5 kali</strong> per akun</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Izin dilakukan di hari-H berhalangan hadir</span>
+                  <span>Demi keefektifan kegiatan belajar mengajar maka per tanggal 30 september telah ditiadakan fitur <strong>izin</strong>, agar proses pembelajaran siswa tidak terputus karena izin harian</span>
                 </li>
               </ul>
             </div>
@@ -123,28 +115,14 @@ export function AnnouncementPopup({ isOpen, onClose }: { isOpen: boolean; onClos
               <ul className="space-y-1 text-sm text-blue-700 dark:text-blue-300">
                 <li className="flex items-start gap-1.5">
                   <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Jika berhalangan hadir dalam waktu yang lama</span>
+                  <span>Pembatasan untuk siswa yang diperbolehkan untuk cuti</span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Perlu persetujuan admin/tutor</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Ajukan mulai hari ini atau sebelum periode cuti dimulai</span>
+                  <span>Siswa disetujui cutinya jika: mendapat rekomendasi dari tutor dan dalam keadaan mendesak saja</span>
                 </li>
               </ul>
             </div>
-          </div>
-
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
-            <p className="flex items-start gap-2 text-sm text-amber-800 dark:text-amber-200">
-              <Info className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>
-                <strong>Prioritas pengecualian:</strong> Cuti (disetujui) → Izin (valid) → Potong kuota normal.
-                tombol izin dan ajukan cuti ada dibagian atas
-              </span>
-            </p>
           </div>
         </div>
 
