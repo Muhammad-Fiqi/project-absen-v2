@@ -29,6 +29,14 @@ export const course = sqliteTable('Course', {
   totalSessions: integer('totalSessions').notNull().default(20),
   graceMinutesBefore: integer('graceMinutesBefore').notNull().default(10),
   graceMinutesAfter: integer('graceMinutesAfter').notNull().default(20),
+  // Quota behavior settings
+  quotaDailyDecrement: integer('quotaDailyDecrement').notNull().default(1), // 1 = daily, 0 = on attendance
+  // Display settings for student panel
+  showQuotaAmount: integer('showQuotaAmount', { mode: 'boolean' }).notNull().default(true),
+  showQuotaSessions: integer('showQuotaSessions', { mode: 'boolean' }).notNull().default(true),
+  showAttendanceCount: integer('showAttendanceCount', { mode: 'boolean' }).notNull().default(true),
+  showAbsentCount: integer('showAbsentCount', { mode: 'boolean' }).notNull().default(true),
+  showCalendarPanel: integer('showCalendarPanel', { mode: 'boolean' }).notNull().default(true),
   createdAt: text('createdAt').notNull().default(sql`(CURRENT_TIMESTAMP)`),
 })
 

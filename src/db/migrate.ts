@@ -33,6 +33,12 @@ export async function ensureDummyTables() {
       "totalSessions" INTEGER NOT NULL DEFAULT 20,
       "graceMinutesBefore" INTEGER NOT NULL DEFAULT 10,
       "graceMinutesAfter" INTEGER NOT NULL DEFAULT 20,
+      "quotaDailyDecrement" INTEGER NOT NULL DEFAULT 1,
+      "showQuotaAmount" INTEGER NOT NULL DEFAULT 1,
+      "showQuotaSessions" INTEGER NOT NULL DEFAULT 1,
+      "showAttendanceCount" INTEGER NOT NULL DEFAULT 1,
+      "showAbsentCount" INTEGER NOT NULL DEFAULT 1,
+      "showCalendarPanel" INTEGER NOT NULL DEFAULT 1,
       "createdAt" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     );
 
@@ -275,13 +281,30 @@ export async function ensureDummyTables() {
         'DROP TABLE "QuotaDailyUsage";',
         'ALTER TABLE "QuotaDailyUsage_new" RENAME TO "QuotaDailyUsage";',
       ]
-      for (const stmt of upgradeStatements) {
+for (const stmt of upgradeStatements) {
         if (typeof client.query === 'function') await client.query(stmt)
         else await client.execute({ sql: stmt })
       }
     }
   } catch (error) {
     console.error('QuotaDailyUsage migration failed', error)
+  }
+
+  // Add new course settings columns
+  for (const alter of [
+    'ALTER TABLE "Course" ADD COLUMN "quotaDailyDecrement" INTEGER NOT NULL DEFAULT 1;',
+    'ALTER TABLE "Course" ADD COLUMN "showQuotaAmount" INTEGER NOT NULL DEFAULT 1;',
+    'ALTER TABLE "Course" ADD COLUMN "showQuotaSessions" INTEGER NOT NULL DEFAULT 1;',
+    'ALTER TABLE "Course" ADD COLUMN "showAttendanceCount" INTEGER NOT NULL DEFAULT 1;',
+'ALTER TABLE "Course" ADD COLUMN "showAbsentCount" INTEGER NOT NULL DEFAULT 1;',
+    'ALTER TABLE "Course" ADD COLUMN "showCalendarPanel" INTEGER NOT NULL DEFAULT 1;',
+  ]) {
+    try {
+      if (typeof client.query === 'function') await client.query(alter)
+      else if (typeof client.execute === 'function') await client.execute({ sql: alter })
+    } catch {
+      // The column already exists on current databases.
+    }
   }
 }
 

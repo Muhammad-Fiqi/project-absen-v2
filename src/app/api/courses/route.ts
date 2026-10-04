@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { code, name, description, defaultQuota, totalSessions, graceMinutesBefore, graceMinutesAfter } = body
+    const { code, name, description, defaultQuota, totalSessions, graceMinutesBefore, graceMinutesAfter, quotaDailyDecrement, showQuotaAmount, showQuotaSessions, showAttendanceCount, showAbsentCount, showCalendarPanel } = body
 
     if (!code || !name) {
       return NextResponse.json({ error: 'Kode dan nama kursus wajib diisi' }, { status: 400 })
@@ -74,6 +74,12 @@ export async function POST(req: NextRequest) {
       totalSessions: totalSessions ?? 20,
       graceMinutesBefore: graceMinutesBefore ?? 10,
       graceMinutesAfter: graceMinutesAfter ?? 20,
+      quotaDailyDecrement: quotaDailyDecrement ?? 1,
+      showQuotaAmount: showQuotaAmount ?? true,
+      showQuotaSessions: showQuotaSessions ?? true,
+      showAttendanceCount: showAttendanceCount ?? true,
+      showAbsentCount: showAbsentCount ?? true,
+      showCalendarPanel: showCalendarPanel ?? true,
       createdAt: new Date().toISOString(),
     })
 

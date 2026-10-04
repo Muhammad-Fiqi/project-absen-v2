@@ -49,8 +49,20 @@ export async function GET() {
     .where(eq(student.id, studentSess.id))
     .limit(1)
   const fullStudent = fullStudentRows[0]
-  if (!fullStudent || !fullStudent.courseId) {
-    return NextResponse.json({ error: 'Siswa atau kursus tidak ditemukan' }, { status: 404 })
+  if (!fullStudent) {
+    return NextResponse.json({ error: 'Siswa tidak ditemukan' }, { status: 404 })
+  }
+  if (!fullStudent.courseId) {
+    // Student exists but not assigned to a course yet
+    return NextResponse.json({ 
+      error: 'Belum ditugaskan ke kursus',
+      needsCourseAssignment: true,
+      student: {
+        id: fullStudent.id,
+        studentCode: fullStudent.studentCode,
+        name: fullStudent.name,
+      }
+    }, { status: 400 })
   }
 
   const courseRows = await db.select().from(course).where(eq(course.id, fullStudent.courseId)).limit(1)
@@ -232,6 +244,12 @@ export async function GET() {
       name: courseRow.name,
       totalSessions: courseRow.totalSessions,
       defaultQuota: courseRow.defaultQuota,
+      quotaDailyDecrement: courseRow.quotaDailyDecrement ?? 1,
+      showQuotaAmount: courseRow.showQuotaAmount ?? true,
+      showQuotaSessions: courseRow.showQuotaSessions ?? true,
+      showAttendanceCount: courseRow.showAttendanceCount ?? true,
+      showAbsentCount: courseRow.showAbsentCount ?? true,
+      showCalendarPanel: courseRow.showCalendarPanel ?? true,
     },
     quota: {
       total: fullStudent.sessionQuota,

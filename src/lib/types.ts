@@ -116,6 +116,12 @@ export interface StudentDashboard {
     name: string
     totalSessions: number
     defaultQuota: number
+    quotaDailyDecrement: number
+    showQuotaAmount: boolean
+    showQuotaSessions: boolean
+    showAttendanceCount: boolean
+    showAbsentCount: boolean
+    showCalendarPanel: boolean
   }
   quota: {
     total: number

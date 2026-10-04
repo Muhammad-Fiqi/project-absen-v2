@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const { id } = await params
     const body = await req.json()
-    const { code, name, description, defaultQuota, totalSessions, graceMinutesBefore, graceMinutesAfter } = body
+    const { code, name, description, defaultQuota, totalSessions, graceMinutesBefore, graceMinutesAfter, quotaDailyDecrement, showQuotaAmount, showQuotaSessions, showAttendanceCount, showAbsentCount, showCalendarPanel } = body
 
     const existing = await db.select().from(course).where(eq(course.id, id)).limit(1)
     if (!existing[0]) {
@@ -38,6 +38,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (totalSessions !== undefined) updates.totalSessions = Math.max(0, Number(totalSessions))
     if (graceMinutesBefore !== undefined) updates.graceMinutesBefore = Math.max(0, Number(graceMinutesBefore))
     if (graceMinutesAfter !== undefined) updates.graceMinutesAfter = Math.max(0, Number(graceMinutesAfter))
+    if (quotaDailyDecrement !== undefined) updates.quotaDailyDecrement = Math.max(0, Math.min(1, Number(quotaDailyDecrement)))
+    if (showQuotaAmount !== undefined) updates.showQuotaAmount = Boolean(showQuotaAmount)
+    if (showQuotaSessions !== undefined) updates.showQuotaSessions = Boolean(showQuotaSessions)
+    if (showAttendanceCount !== undefined) updates.showAttendanceCount = Boolean(showAttendanceCount)
+    if (showAbsentCount !== undefined) updates.showAbsentCount = Boolean(showAbsentCount)
+    if (showCalendarPanel !== undefined) updates.showCalendarPanel = Boolean(showCalendarPanel)
 
     if (Object.keys(updates).length > 0) {
       await db.update(course).set(updates).where(eq(course.id, id))

@@ -13,6 +13,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client'
 import { toast } from 'sonner'
 
@@ -25,6 +27,12 @@ export interface CourseItem {
   totalSessions: number
   graceMinutesBefore: number
   graceMinutesAfter: number
+  quotaDailyDecrement: number
+  showQuotaAmount: boolean
+  showQuotaSessions: boolean
+  showAttendanceCount: boolean
+  showAbsentCount: boolean
+  showCalendarPanel: boolean
   createdAt: string
   studentCount?: number
   sessionCount?: number
@@ -49,6 +57,12 @@ export function CoursesManage() {
     totalSessions: 20,
     graceMinutesBefore: 10,
     graceMinutesAfter: 20,
+    quotaDailyDecrement: 1,
+    showQuotaAmount: true,
+    showQuotaSessions: true,
+    showAttendanceCount: true,
+    showAbsentCount: true,
+    showCalendarPanel: true,
   })
 
   const loadCourses = useCallback(async () => {
@@ -76,6 +90,12 @@ export function CoursesManage() {
       totalSessions: 20,
       graceMinutesBefore: 10,
       graceMinutesAfter: 20,
+      quotaDailyDecrement: 1,
+      showQuotaAmount: true,
+      showQuotaSessions: true,
+      showAttendanceCount: true,
+      showAbsentCount: true,
+      showCalendarPanel: true,
     })
   }
 
@@ -137,6 +157,12 @@ export function CoursesManage() {
       totalSessions: item.totalSessions,
       graceMinutesBefore: item.graceMinutesBefore,
       graceMinutesAfter: item.graceMinutesAfter,
+      quotaDailyDecrement: item.quotaDailyDecrement ?? 1,
+      showQuotaAmount: item.showQuotaAmount ?? true,
+      showQuotaSessions: item.showQuotaSessions ?? true,
+      showAttendanceCount: item.showAttendanceCount ?? true,
+      showAbsentCount: item.showAbsentCount ?? true,
+      showCalendarPanel: item.showCalendarPanel ?? true,
     })
     setEditOpen(true)
   }
@@ -274,6 +300,48 @@ export function CoursesManage() {
                 <Input type="number" min={0} max={60} value={form.graceMinutesAfter} onChange={(e) => setForm({ ...form, graceMinutesAfter: Number(e.target.value) })} />
               </div>
             </div>
+            {/* Quota Behavior */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Aturan Pengurangan Kuota</Label>
+              <RadioGroup value={form.quotaDailyDecrement} onValueChange={(v) => setForm({ ...form, quotaDailyDecrement: Number(v) })}>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <RadioGroupItem value={1} className="h-4 w-4" />
+                    <span className="text-sm">Kuota berkurang setiap hari ada sesi aktif</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <RadioGroupItem value={0} className="h-4 w-4" />
+                    <span className="text-sm">Kuota berkurang saat student menekan tombol absen</span>
+                  </label>
+                </div>
+              </RadioGroup>
+            </div>
+            {/* Display Settings */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Tampilkan di Panel Student</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showQuotaAmount} onCheckedChange={(c) => setForm({ ...form, showQuotaAmount: c })} />
+                  <span className="text-sm">Jumlah Kuota</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showQuotaSessions} onCheckedChange={(c) => setForm({ ...form, showQuotaSessions: c })} />
+                  <span className="text-sm">Sesi Kuota</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showAttendanceCount} onCheckedChange={(c) => setForm({ ...form, showAttendanceCount: c })} />
+                  <span className="text-sm">Jumlah Kehadiran</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showAbsentCount} onCheckedChange={(c) => setForm({ ...form, showAbsentCount: c })} />
+                  <span className="text-sm">Jumlah Bolos</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showCalendarPanel} onCheckedChange={(c) => setForm({ ...form, showCalendarPanel: c })} />
+                  <span className="text-sm">Panel Kalender</span>
+                </label>
+              </div>
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Batal</Button>
               <Button type="submit" disabled={saving} className="gap-1.5">
@@ -329,6 +397,48 @@ export function CoursesManage() {
               <div className="space-y-1.5">
                 <Label className="text-xs">Grace After (menit)</Label>
                 <Input type="number" min={0} max={60} value={form.graceMinutesAfter} onChange={(e) => setForm({ ...form, graceMinutesAfter: Number(e.target.value) })} />
+              </div>
+            </div>
+            {/* Quota Behavior */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Aturan Pengurangan Kuota</Label>
+              <RadioGroup value={form.quotaDailyDecrement} onValueChange={(v) => setForm({ ...form, quotaDailyDecrement: Number(v) })}>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <RadioGroupItem value={1} className="h-4 w-4" />
+                    <span className="text-sm">Kuota berkurang setiap hari ada sesi aktif</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <RadioGroupItem value={0} className="h-4 w-4" />
+                    <span className="text-sm">Kuota berkurang saat student menekan tombol absen</span>
+                  </label>
+                </div>
+              </RadioGroup>
+            </div>
+            {/* Display Settings */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Tampilkan di Panel Student</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showQuotaAmount} onCheckedChange={(c) => setForm({ ...form, showQuotaAmount: c })} />
+                  <span className="text-sm">Jumlah Kuota</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showQuotaSessions} onCheckedChange={(c) => setForm({ ...form, showQuotaSessions: c })} />
+                  <span className="text-sm">Sesi Kuota</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showAttendanceCount} onCheckedChange={(c) => setForm({ ...form, showAttendanceCount: c })} />
+                  <span className="text-sm">Jumlah Kehadiran</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showAbsentCount} onCheckedChange={(c) => setForm({ ...form, showAbsentCount: c })} />
+                  <span className="text-sm">Jumlah Bolos</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={form.showCalendarPanel} onCheckedChange={(c) => setForm({ ...form, showCalendarPanel: c })} />
+                  <span className="text-sm">Panel Kalender</span>
+                </label>
               </div>
             </div>
             <DialogFooter>

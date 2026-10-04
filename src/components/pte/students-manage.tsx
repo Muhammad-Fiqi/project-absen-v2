@@ -18,11 +18,19 @@ import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client'
 import { toast } from 'sonner'
 import type { StudentManageRow } from '@/lib/types'
 
+export interface CourseItem {
+  id: string
+  code: string
+  name: string
+}
+
 export function StudentsManage() {
   const [students, setStudents] = useState<StudentManageRow[]>([])
+  const [courses, setCourses] = useState<CourseItem[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'exhausted' | 'expiring' | 'healthy'>('all')
+  const [courseFilter, setCourseFilter] = useState<string>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [extendTarget, setExtendTarget] = useState<StudentManageRow | null>(null)
 
@@ -32,8 +40,17 @@ export function StudentsManage() {
   const [editingStudent, setEditingStudent] = useState<StudentManageRow | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0, increaseRemainingBy: 0,
+    studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0, increaseRemainingBy: 0, courseId: '',
   })
+
+  async function loadCourses() {
+    try {
+      const res = await apiGet<{ courses: CourseItem[] }>('/api/courses')
+      setCourses(res.courses)
+    } catch {
+      // silent
+    }
+  }
 
   async function load() {
     setLoading(true)
@@ -47,10 +64,13 @@ export function StudentsManage() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { 
+    load()
+    loadCourses()
+  }, [])
 
   function resetForm() {
-    setForm({ studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0, increaseRemainingBy: 0 })
+    setForm({ studentCode: '', name: '', email: '', phone: '', sessionQuota: 15, pinHash: '', reduceRemainingBy: 0, increaseRemainingBy: 0, courseId: '' })
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -84,6 +104,7 @@ export function StudentsManage() {
       pinHash: '',
       reduceRemainingBy: 0,
       increaseRemainingBy: 0,
+      courseId: s.courseId || '',
     })
     setEditOpen(true)
   }
@@ -123,6 +144,7 @@ export function StudentsManage() {
     if (filter === 'exhausted') return s.quotaExhausted
     if (filter === 'expiring') return !s.quotaExhausted && s.sessionsRemaining <= 2
     if (filter === 'healthy') return s.sessionsRemaining > 2
+    if (courseFilter !== 'all' && s.courseId !== courseFilter) return false
     return true
   })
 
@@ -154,6 +176,15 @@ export function StudentsManage() {
           <Input placeholder="Cari nama / kode / email…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
         </div>
         <div className="flex flex-wrap gap-1">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Kode Kursus</Label>
+            <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="all">Semua Kursus</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
+              ))}
+            </select>
+          </div>
           {([
             ['all', 'Semua'],
             ['exhausted', 'Habis'],
@@ -228,8 +259,16 @@ export function StudentsManage() {
                         <Info label="Hari Terakhir Absen" value={s.lastCheckIn ? new Date(s.lastCheckIn).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} />
                       </div>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                        {s.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{s.email}</span>}
-                        {s.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{s.phone}</span>}
+                        {s.email && (
+                          <a href={`mailto:${s.email}`} className="flex items-center gap-1 hover:text-primary underline">
+                            <Mail className="h-3 w-3" />{s.email}
+                          </a>
+                        )}
+                        {s.phone && (
+                          <a href={`https://wa.me/${s.phone.replace(/[^0-9]/g, '')}` +'?text=Halo%20Kak,%20mohon%20maaf%20mengganggu%20waktunya.%20Sekadar%20menginfokan%20ya%20Kak,%20mulai%20tanggal%205%20Oktober%20nanti%20pilihan%20jadwal%20sesi%20yang%20tersedia%20hanya%20ada%20di%20jam%2008.30%E2%80%9310.10%20dan%2010.00%E2%80%9311.30.%20Hal%20ini%20kami%20sesuaikan%20demi%20efisiensi%20waktu%20mengajar%20tutor.%20Terima%20kasih%20banyak%20atas%20pengertiannya%20%F0%9F%99%8F%F0%9F%98%8A%0A'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-600 underline">
+                            <Phone className="h-3 w-3" />{s.phone}
+                          </a>
+                        )}
                         {s.lastCheckIn && <span>Terakhir absen: {new Date(s.lastCheckIn).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>}
                         {s.quotaExtendedAt && <span>Diperpanjang: {new Date(s.quotaExtendedAt).toLocaleDateString('id-ID')}</span>}
                       </div>
@@ -306,6 +345,15 @@ export function StudentsManage() {
                 <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Kode Kursus *</Label>
+              <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" required>
+                <option value="">Pilih kode kursus</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Kuota Sesi</Label>
@@ -356,6 +404,15 @@ export function StudentsManage() {
                 <Label className="text-xs">No. HP</Label>
                 <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Kode Kursus</Label>
+              <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                <option value="">Pilih kode kursus</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Kuota Sesi</Label>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, LogOut } from 'lucide-react'
 import { Header } from '@/components/pte/header'
 import { Footer } from '@/components/pte/footer'
 import { Landing } from '@/components/pte/landing'
@@ -22,6 +22,7 @@ type View =
   | 'student-home'
   | 'teacher-home'
   | 'admin-home'
+  | 'student-no-course'
 
 interface StudentInfo {
   id: string
@@ -91,8 +92,13 @@ export default function Home() {
     loadStartedRef.current = true
     apiGet<StudentDashboardData>('/api/student/dashboard')
       .then(setStudentData)
-      .catch(() => {
-        toast.error('Gagal memuat dashboard')
+      .catch((err) => {
+        // Check if it's a "needs course assignment" error
+        if (err?.response?.status === 400 && err?.response?.data?.needsCourseAssignment) {
+          setView('student-no-course')
+        } else {
+          toast.error('Gagal memuat dashboard')
+        }
         loadStartedRef.current = false
       })
   }, [view])
@@ -175,6 +181,24 @@ export default function Home() {
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ))}
+        {view === 'student-no-course' && (
+          <div className="flex min-h-[60vh] items-center justify-center px-4">
+            <div className="text-center max-w-md">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/30">
+                <Users className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h2 className="text-xl font-bold mb-2">Belum Ditugaskan ke Kursus</h2>
+              <p className="text-muted-foreground mb-6">
+                Akun Anda belum dihubungkan ke salah satu kursus yang tersedia.
+                Silakan hubungi admin untuk ditambahkan ke kursus yang sesuai.
+              </p>
+              <Button variant="outline" onClick={handleLogout} className="gap-1.5">
+                <LogOut className="h-4 w-4" />
+                Keluar
+              </Button>
+            </div>
+          </div>
+        )}
         {view === 'teacher-home' && <TeacherDashboard />}
         {view === 'admin-home' && <AdminDashboard />}
       </main>

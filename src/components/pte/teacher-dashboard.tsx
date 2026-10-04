@@ -26,6 +26,19 @@ import { toast } from 'sonner'
 import { formatSessionCardTitle } from '@/lib/utils'
 import { sessionTimeLabel } from '@/lib/session-time'
 
+export interface CourseItem {
+  id: string
+  code: string
+  name: string
+}
+
+export interface StaffItem {
+  id: string
+  name: string
+  username: string
+  role: string
+}
+
 interface SessionItem {
   id: string
   sessionNumber: number
@@ -659,8 +672,11 @@ function CreateSessionDialog({
   days: DayGroup[]
 }) {
   const [loading, setLoading] = useState(false)
+  const [courses, setCourses] = useState<CourseItem[]>([])
+  const [staff, setStaff] = useState<StaffItem[]>([])
   const todayKey = new Date().toISOString().slice(0, 10)
   const [form, setForm] = useState({
+    courseId: '',
     date: todayKey,
     startTime: '10:00',
     endTime: '11:30',
@@ -672,6 +688,22 @@ function CreateSessionDialog({
     notes: '',
     maxAttendees: 10,
   })
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [coursesRes, staffRes] = await Promise.all([
+          apiGet<{ courses: CourseItem[] }>('/api/courses'),
+          apiGet<{ staff: StaffItem[] }>('/api/staff'),
+        ])
+        setCourses(coursesRes.courses)
+        setStaff(staffRes.staff)
+      } catch {
+        // silent
+      }
+    }
+    loadData()
+  }, [])
 
   useEffect(() => {
     if (open) {
@@ -688,15 +720,14 @@ function CreateSessionDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.date || !form.startTime || !form.endTime) {
-      toast.error('Lengkapi tanggal & jam')
+    if (!form.courseId || !form.date || !form.startTime || !form.endTime) {
+      toast.error('Lengkapi kode kursus, tanggal & jam')
       return
     }
     setLoading(true)
     try {
-      const rep = await apiGet<{ course: { id: string } }>('/api/reports/course')
       await apiPost('/api/sessions', {
-        courseId: rep.course.id,
+        courseId: form.courseId,
         date: form.date,
         startTime: `${form.date}T${form.startTime}`,
         endTime: `${form.date}T${form.endTime}`,
@@ -730,6 +761,21 @@ function CreateSessionDialog({
           <DialogDescription>Tambah satu sesi (offline/online) untuk satu hari. Materi (topicOfDay) akan otomatis sama untuk semua sesi di hari yang sama.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Kode Kursus *</Label>
+            <select
+              value={form.courseId}
+              onChange={(e) => setForm({ ...form, courseId: e.target.value })}
+              className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            >
+              <option value="">Pilih kode kursus</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Mode toggle */}
           <div className="grid grid-cols-2 gap-2">
             <Button type="button" size="sm" variant={form.mode === 'offline' ? 'default' : 'outline'} onClick={() => setForm({ ...form, mode: 'offline' })} className="gap-1.5">
@@ -746,7 +792,16 @@ function CreateSessionDialog({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Pengajar</Label>
-              <Input value={form.teacher} onChange={(e) => setForm({ ...form, teacher: e.target.value })} placeholder="Mis. Mr Faisal" />
+              <select
+                value={form.teacher}
+                onChange={(e) => setForm({ ...form, teacher: e.target.value })}
+                className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Pilih pengajar</option>
+                {staff.map((s) => (
+                  <option key={s.id} value={s.name}>{s.name} ({s.role})</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

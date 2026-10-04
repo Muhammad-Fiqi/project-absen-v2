@@ -15,6 +15,19 @@ import { Label } from '@/components/ui/label'
 import { apiGet, apiPost } from '@/lib/api-client'
 import { toast } from 'sonner'
 
+export interface CourseItem {
+  id: string
+  code: string
+  name: string
+}
+
+export interface StaffItem {
+  id: string
+  name: string
+  username: string
+  role: string
+}
+
 interface SessionRow {
   id: string
   startTime: string
@@ -23,9 +36,6 @@ interface SessionRow {
   platform: string
   room: string
 }
-
-const TEACHER_OPTIONS = ['Mr Faisal', 'Mr Mudi']
-const ONLINE_PLATFORMS = ['Google Meet', 'Discord', 'Zoom']
 
 function makeRow(overrides?: Partial<SessionRow>, id?: string): SessionRow {
   const rowId = overrides?.id || id || crypto.randomUUID()
@@ -70,12 +80,31 @@ interface BulkSessionDialogProps {
 
 export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSessionDialogProps) {
   const [loading, setLoading] = useState(false)
+  const [courses, setCourses] = useState<CourseItem[]>([])
+  const [staff, setStaff] = useState<StaffItem[]>([])
   const todayKey = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(todayKey)
+  const [courseId, setCourseId] = useState('')
   const [topicOfDay, setTopicOfDay] = useState('')
   const [maxAttendees, setMaxAttendees] = useState(10)
   const [offlineRows, setOfflineRows] = useState<SessionRow[]>([])
   const [onlineRows, setOnlineRows] = useState<SessionRow[]>([])
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [coursesRes, staffRes] = await Promise.all([
+          apiGet<{ courses: CourseItem[] }>('/api/courses'),
+          apiGet<{ staff: StaffItem[] }>('/api/staff'),
+        ])
+        setCourses(coursesRes.courses)
+        setStaff(staffRes.staff)
+      } catch {
+        // silent
+      }
+    }
+    loadData()
+  }, [])
 
   // Initialize with one row each when opened
   useEffect(() => {
@@ -138,6 +167,10 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
   }
 
   async function handleSubmit() {
+    if (!courseId) {
+      toast.error('Pilih kode kursus terlebih dahulu')
+      return
+    }
     if (!date) {
       toast.error('Pilih tanggal terlebih dahulu')
       return
@@ -161,10 +194,8 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
 
     setLoading(true)
     try {
-      // Get course ID
-      const rep = await apiGet<{ course: { id: string } }>('/api/reports/course')
       await apiPost('/api/sessions/bulk', {
-        courseId: rep.course.id,
+        courseId,
         date,
         topicOfDay: topicOfDay || undefined,
         maxAttendees,
@@ -202,7 +233,21 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
 
         <div className="space-y-4">
           {/* Date & Topic */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Kode Kursus *</Label>
+              <select
+                value={courseId}
+                onChange={(e) => setCourseId(e.target.value)}
+                className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              >
+                <option value="">Pilih kode kursus</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Tanggal</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -254,6 +299,7 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
             onUpdateRow={updateOfflineRow}
             onRemoveRow={removeOfflineRow}
             onAddRow={addOfflineRow}
+            staff={staff}
           />
 
           {/* Online section */}
@@ -265,6 +311,7 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
             onUpdateRow={updateOnlineRow}
             onRemoveRow={removeOnlineRow}
             onAddRow={addOnlineRow}
+            staff={staff}
           />
         </div>
 
@@ -288,7 +335,7 @@ export function BulkSessionDialog({ open, onOpenChange, onCreated }: BulkSession
 // ==================== Session Section ====================
 
 function SessionSection({
-  title, icon, mode, rows, onUpdateRow, onRemoveRow, onAddRow,
+  title, icon, mode, rows, onUpdateRow, onRemoveRow, onAddRow, staff = [],
 }: {
   title: string
   icon: React.ReactNode
@@ -297,6 +344,7 @@ function SessionSection({
   onUpdateRow: (id: string, field: keyof SessionRow, value: string) => void
   onRemoveRow: (id: string) => void
   onAddRow: () => void
+  staff?: StaffItem[]
 }) {
   return (
     <Card className="border-border/60">
@@ -314,7 +362,7 @@ function SessionSection({
 
         {rows.length === 0 ? (
           <p className="py-4 text-center text-xs text-muted-foreground">
-            Belum ada sesi {mode}. Klik &quot;Tambah&quot; untuk menambah.
+            Belum ada sesi {mode}. Klik "Tambah" untuk menambah.
           </p>
         ) : (
           <div className="max-h-72 space-y-1.5 overflow-y-auto scrollbar-thin pr-1">
@@ -327,6 +375,7 @@ function SessionSection({
                 onUpdate={(field, value) => onUpdateRow(row.id, field, value)}
                 onRemove={() => onRemoveRow(row.id)}
                 canRemove={rows.length > 1}
+                staff={staff}
               />
             ))}
           </div>
@@ -339,7 +388,7 @@ function SessionSection({
 // ==================== Session Row Editor ====================
 
 function SessionRowEditor({
-  row, index, mode, onUpdate, onRemove, canRemove,
+  row, index, mode, onUpdate, onRemove, canRemove, staff = [],
 }: {
   row: SessionRow
   index: number
@@ -347,6 +396,7 @@ function SessionRowEditor({
   onUpdate: (field: keyof SessionRow, value: string) => void
   onRemove: () => void
   canRemove: boolean
+  staff?: StaffItem[]
 }) {
   const platformOptions = mode === 'offline'
     ? ['Office', 'Kantor Pusat', 'Cabang']
@@ -414,8 +464,8 @@ function SessionRowEditor({
           className="h-7 rounded-md border border-input bg-background px-2 text-xs"
         >
           <option value="">Pengajar</option>
-          {TEACHER_OPTIONS.map((t) => (
-            <option key={t} value={t}>{t}</option>
+          {staff.map((s) => (
+            <option key={s.id} value={s.name}>{s.name} ({s.role})</option>
           ))}
         </select>
       </div>
