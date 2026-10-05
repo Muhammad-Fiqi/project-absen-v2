@@ -374,7 +374,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
           </div>
           <p className="rounded-lg bg-muted/40 p-2 text-[11px] text-muted-foreground">
             <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
-            Setiap hari ada beberapa sesi (offline & online) dengan materi yang sama. Anda cukup ikut <strong>1 sesi per hari</strong> — bebas pilih sesi mana saja.
+            Setiap hari ada beberapa sesi (offline & online) dengan materi yang sama. Anda cukup ikut <strong>1 sesi per hari</strong>.
           </p>
         </CardContent>
       </Card>
@@ -439,7 +439,7 @@ export function StudentDashboard({ initialData }: StudentDashboardProps) {
             <EmptyState icon={History} text="Belum ada riwayat kehadiran" />
           ) : (
             recentDays.map((d) => (
-              <DayGroupCard key={d.dayKey} day={d} isHistory quotaExhausted={quota.exhausted} expandedSession={expandedSession} onToggleExpand={setExpandedSession} onOpenMeeting={(meeting) => setMeetingSession(meeting)} onCheckIn={() => {}} />
+              <DayGroupCard key={d.dayKey} day={d} isHistory quotaExhausted={quota.exhausted} expandedSession={expandedSession} onToggleExpand={setExpandedSession} onOpenMeeting={(meeting) => setMeetingSession(meeting)} onCheckIn={() => { }} />
             ))
           )}
         </TabsContent>
@@ -654,15 +654,13 @@ function DayGroupCard({
             return (
               <div
                 key={s.id}
-                className={`flex flex-col gap-2.5 rounded-xl border p-3.5 transition-colors ${
-                  canCheckIn ? 'border-primary/40 bg-primary/5 hover:bg-primary/10' : 'border-border/60 bg-card'
-                }`}
+                className={`flex flex-col gap-2.5 rounded-xl border p-3.5 transition-colors ${canCheckIn ? 'border-primary/40 bg-primary/5 hover:bg-primary/10' : 'border-border/60 bg-card'
+                  }`}
               >
                 {/* Main Card Header */}
                 <div className="flex items-start gap-3">
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg mt-0.5 ${
-                    s.mode === 'online' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' : 'bg-accent text-accent-foreground'
-                  }`}>
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg mt-0.5 ${s.mode === 'online' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' : 'bg-accent text-accent-foreground'
+                    }`}>
                     <ModeIcon className="h-4 w-4" />
                   </div>
 
@@ -758,7 +756,7 @@ function DayGroupCard({
                   </div>
                 )}
               </div>
-              
+
             )
           })}
         </div>
