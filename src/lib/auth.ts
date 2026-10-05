@@ -4,6 +4,7 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { count, eq } from 'drizzle-orm'
+import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { adminUser, quotaDailyUsage, student } from '@/db/schema'
 import type { StudentInfo, TeacherInfo } from '@/lib/types'
@@ -12,12 +13,28 @@ const STUDENT_COOKIE = 'pte_student'
 const TEACHER_COOKIE = 'pte_teacher'
 const SECRET = process.env.AUTH_SECRET || 'pte-attendance-auth-key-2024'
 
+function hmacSign(data: string): string {
+  return crypto.createHmac('sha256', SECRET).update(data).digest('hex')
+}
 
 function encode(obj: unknown): string {
-  return Buffer.from(JSON.stringify(obj)).toString('base64')
+  const payload = Buffer.from(JSON.stringify(obj)).toString('base64')
+  const signature = hmacSign(payload)
+  return `${payload}.${signature}`
 }
 function decode<T>(s: string): T | null {
   try {
+    // Support signed format: base64.hmac
+    if (s.includes('.')) {
+      const [payload, signature] = s.split('.')
+      const expected = hmacSign(payload)
+      // Timing-safe comparison to prevent timing attacks
+      if (!signature || !crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'))) {
+        return null // tampered cookie
+      }
+      return JSON.parse(Buffer.from(payload, 'base64').toString()) as T
+    }
+    // Fallback: unsigned legacy cookie (will be re-signed on next session refresh)
     return JSON.parse(Buffer.from(s, 'base64').toString()) as T
   } catch {
     return null

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { student, course, attendance, quotaExtension, adminUser, quotaDailyUsage, studentLeaveRequest } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
+import { hashPin } from '@/lib/security'
 import { newId } from '@/lib/id'
 import { dayKey } from '@/lib/quota'
 import type { StudentManageRow } from '@/lib/types'
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
       phone: phone?.trim() || null,
       courseCode: finalCourseCode,
       courseId: finalCourseId,
-      pinHash: pinHash || cleanCode.slice(-4), // default PIN = last 4 of code
+      pinHash: hashPin(pinHash || cleanCode.slice(-4)), // hash PIN with scrypt
       sessionQuota: sessionQuota ?? 15,
       sessionQuotaRemaining: sessionQuota ?? 15,
       createdAt: new Date().toISOString(),
@@ -126,7 +127,8 @@ export async function GET() {
       name: s.name,
       email: s.email,
       phone: s.phone,
-      currentPassword: s.pinHash,
+      courseId: s.courseId,
+      hasPassword: !!s.pinHash,
       sessionQuota: s.sessionQuota,
       sessionQuotaRemaining: remaining,
       manualQuotaReduction: s.manualQuotaReduction,

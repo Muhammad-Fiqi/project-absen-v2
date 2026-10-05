@@ -21,16 +21,15 @@ const CLASS_PACKAGES = [
   {
     id: 'standard',
     name: 'Kelas Standard',
-    price: 'Rp 1.000.000',
+    price: 'Rp 1.200.000',
     popular: false,
     badge: 'Program Dasar',
     description: 'Cocok untuk persiapan dasar PTE Academic dengan akses modul dan latihan terbimbing.',
     features: [
       'Modul & Materi Pembelajaran PTE Gratis',
-      'Penjemputan Gratis dari Stasiun Kediri',
       'Akses Aplikasi APEUni Sharing',
       'Sesi Absensi Kelas (20 Pertemuan)',
-      'Konsultasi Pengajar via Grup Sesi',
+      'Gratis Konsultasi Terkait Pembelajaran dan Keimigrasian'
     ],
   },
   {
@@ -42,11 +41,9 @@ const CLASS_PACKAGES = [
     description: 'Solusi lengkap dengan garansi mengulang & fasilitas penjemputan dari Bandara Juanda.',
     features: [
       'Semua Benefit Kelas Standard',
+      'Akses Aplikasi APEUni Sharing Maks 3 User',
       'Garansi Mengulang Kelas Gratis (Jika Skor < 24 WHV)',
-      'Bantuan Dokumen Pendukung Untuk Pembuatan Paspor',
-      'Gratis Sewa Sepeda Selama Kelas Offline di Pare',
-      'Penjemputan Gratis dari Bandara Juanda atau Stasiun Kediri',
-      'Konsultasi WHV & Feedback Feedback Lifetime',
+      'Bantuan Dokumen Pendukung Untuk Pembuatan Paspor'
     ],
   },
   {
@@ -58,7 +55,7 @@ const CLASS_PACKAGES = [
     description: 'Paket terlengkap untuk skor maksimal dengan akun aplikasi APEUni Privat khusus.',
     features: [
       'Semua Benefit Kelas Garansi',
-      'Aplikasi APEUni Privat VIP (Bukan Sharing)',
+      'Aplikasi APEUni Privat VIP (1 User 1 Akun)',
     ],
   },
 ]
@@ -91,7 +88,7 @@ export function Landing({ onSelectStudent, onSelectTeacher, onSelectAdmin }: Lan
 
               <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl lg:text-5xl leading-tight">
                 Raih Skor PTE Impian &{' '}
-                <span className="bg-gradient-to-r from-primary via-blue-600 to-sky-500 bg-clip-text text-transparent animate-gradient-x bg-[length:200%_auto]">
+                <span className="bg-linear-to-r from-primary via-blue-600 to-sky-500 bg-clip-text text-transparent animate-gradient-x bg-size-[200%_auto]">
                   Terbang ke Australia
                 </span>
               </h1>
@@ -260,11 +257,10 @@ export function Landing({ onSelectStudent, onSelectTeacher, onSelectAdmin }: Lan
           {CLASS_PACKAGES.map((pkg) => (
             <Card
               key={pkg.id}
-              className={`relative rounded-[32px] border transition-all flex flex-col justify-between ${
-                pkg.popular
-                  ? 'border-primary ring-2 ring-primary/20 shadow-neu-hover'
-                  : 'border-border/60 shadow-neu-extruded'
-              }`}
+              className={`relative rounded-[32px] border transition-all flex flex-col justify-between ${pkg.popular
+                ? 'border-primary ring-2 ring-primary/20 shadow-neu-hover'
+                : 'border-border/60 shadow-neu-extruded'
+                }`}
             >
               {pkg.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -302,9 +298,8 @@ export function Landing({ onSelectStudent, onSelectTeacher, onSelectAdmin }: Lan
 
               <CardFooter className="pt-0">
                 <Button
-                  className={`w-full rounded-2xl font-medium gap-1.5 ${
-                    pkg.popular ? 'bg-primary text-primary-foreground shadow-md' : ''
-                  }`}
+                  className={`w-full rounded-2xl font-medium gap-1.5 ${pkg.popular ? 'bg-primary text-primary-foreground shadow-md' : ''
+                    }`}
                   variant={pkg.popular ? 'default' : 'outline'}
                   onClick={() => handleSelectPackage(pkg)}
                 >

@@ -25,7 +25,7 @@ export function Header({ role, user, onLogout }: HeaderProps) {
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <div className="relative flex h-10 w-30 items-center justify-center overflow-hidden rounded-xl px-5 filter drop-shadow-[0_0_10px_#00fffc]">
+          <div className="relative flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg">
             <Image src="/logo.png" alt="Ruang PTE" width={140} height={55} className="h-auto w-full object-contain" priority />
           </div>
           <div className="leading-tight">

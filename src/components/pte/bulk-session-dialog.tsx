@@ -403,85 +403,101 @@ function SessionRowEditor({
     : ONLINE_PLATFORMS
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border/40 bg-background/50 p-2">
-      {/* Row number */}
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
-        {index + 1}
-      </span>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border border-border/40 bg-background/50 p-2.5 sm:p-2">
+      <div className="flex items-center gap-2 justify-between sm:justify-start">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground font-mono">
+          {index + 1}
+        </span>
 
-      {/* Time range */}
-      <div className="flex items-center gap-1">
-        <Clock className="h-3 w-3 text-muted-foreground" />
-        <Input
-          type="time"
-          value={row.startTime}
-          onChange={(e) => onUpdate('startTime', e.target.value)}
-          className="h-7 w-[5.5rem] text-xs"
-        />
-        <span className="text-xs text-muted-foreground">–</span>
-        <Input
-          type="time"
-          value={row.endTime}
-          onChange={(e) => onUpdate('endTime', e.target.value)}
-          className="h-7 w-[5.5rem] text-xs"
-        />
-      </div>
-
-      {/* Platform (shown as quick-select for offline) */}
-      {mode === 'offline' && (
+        {/* Time range */}
         <div className="flex items-center gap-1">
-          <Building2 className="h-3 w-3 text-muted-foreground" />
+          <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
           <Input
-            value={row.room}
-            onChange={(e) => onUpdate('room', e.target.value)}
-            placeholder="Ruang"
-            className="h-7 w-20 text-xs"
+            type="time"
+            value={row.startTime}
+            onChange={(e) => onUpdate('startTime', e.target.value)}
+            className="h-7 w-[5.5rem] text-xs font-mono"
+          />
+          <span className="text-xs text-muted-foreground">–</span>
+          <Input
+            type="time"
+            value={row.endTime}
+            onChange={(e) => onUpdate('endTime', e.target.value)}
+            className="h-7 w-[5.5rem] text-xs font-mono"
           />
         </div>
-      )}
 
-      {/* Platform (for online) */}
-      {mode === 'online' && (
-        <div className="flex items-center gap-1">
-          <Video className="h-3 w-3 text-muted-foreground" />
-          <select
-            value={row.platform}
-            onChange={(e) => onUpdate('platform', e.target.value)}
-            className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+        {/* Remove button on mobile (top-right) */}
+        {canRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRemove}
+            className="h-7 w-7 sm:hidden p-0 text-muted-foreground hover:text-destructive"
           >
-            {platformOptions.map((p) => (
-              <option key={p} value={p}>{p}</option>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+        {/* Platform (shown as quick-select for offline) */}
+        {mode === 'offline' && (
+          <div className="flex items-center gap-1 flex-1 sm:w-28 sm:flex-initial">
+            <Building2 className="h-3 w-3 text-muted-foreground shrink-0 hidden sm:inline" />
+            <Input
+              value={row.room}
+              onChange={(e) => onUpdate('room', e.target.value)}
+              placeholder="Ruang"
+              className="h-7 w-full text-xs"
+            />
+          </div>
+        )}
+
+        {/* Platform (for online) */}
+        {mode === 'online' && (
+          <div className="flex items-center gap-1 flex-1 sm:w-28 sm:flex-initial">
+            <Video className="h-3 w-3 text-muted-foreground shrink-0 hidden sm:inline" />
+            <select
+              value={row.platform}
+              onChange={(e) => onUpdate('platform', e.target.value)}
+              className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
+            >
+              {platformOptions.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Teacher */}
+        <div className="flex items-center gap-1 flex-1 sm:w-36 sm:flex-initial">
+          <select
+            value={row.teacher}
+            onChange={(e) => onUpdate('teacher', e.target.value)}
+            className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
+          >
+            <option value="">Pengajar</option>
+            {staff.map((s) => (
+              <option key={s.id} value={s.name}>{s.name} ({s.role})</option>
             ))}
           </select>
         </div>
-      )}
 
-      {/* Teacher */}
-      <div className="flex items-center gap-1">
-        <select
-          value={row.teacher}
-          onChange={(e) => onUpdate('teacher', e.target.value)}
-          className="h-7 rounded-md border border-input bg-background px-2 text-xs"
-        >
-          <option value="">Pengajar</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.name}>{s.name} ({s.role})</option>
-          ))}
-        </select>
+        {/* Remove button on desktop */}
+        {canRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRemove}
+            className="ml-auto hidden sm:flex h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
       </div>
-
-      {/* Remove */}
-      {canRemove && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onRemove}
-          className="ml-auto h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-destructive"
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
-      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { student, attendance, quotaDailyUsage } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
+import { hashPin } from '@/lib/security'
 
 export const runtime = 'nodejs'
 
@@ -49,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updates.manualQuotaReduction = current.manualQuotaReduction + amount
       updates.sessionQuotaRemaining = remaining - amount
     }
-    if (pinHash !== undefined && pinHash.trim().length > 0) updates.pinHash = pinHash.trim()
+    if (pinHash !== undefined && pinHash.trim().length > 0) updates.pinHash = hashPin(pinHash.trim())
     if (courseCode !== undefined) updates.courseCode = courseCode.trim().toUpperCase()
     if (courseId !== undefined) updates.courseId = courseId || null
     if (increaseRemainingBy !== undefined) {

@@ -64,7 +64,7 @@ export function StudentsManage() {
     }
   }
 
-  useEffect(() => { 
+  useEffect(() => {
     load()
     loadCourses()
   }, [])
@@ -141,10 +141,10 @@ export function StudentsManage() {
     const q = query.toLowerCase()
     const matches = !q || s.name.toLowerCase().includes(q) || s.studentCode.toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q)
     if (!matches) return false
+    if (courseFilter !== 'all' && s.courseId !== courseFilter) return false
     if (filter === 'exhausted') return s.quotaExhausted
     if (filter === 'expiring') return !s.quotaExhausted && s.sessionsRemaining <= 2
     if (filter === 'healthy') return s.sessionsRemaining > 2
-    if (courseFilter !== 'all' && s.courseId !== courseFilter) return false
     return true
   })
 
@@ -162,61 +162,94 @@ export function StudentsManage() {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <MiniStat label="Total Siswa" value={students.length} icon={Users} tone="default" />
-        <MiniStat label="Kuota Habis" value={exhaustedCount} icon={PackageOpen} tone="destructive" />
+        <MiniStat label="Kuota Sehat" value={students.length - exhaustedCount - expiringCount} icon={CheckCircle2} tone="primary" />
         <MiniStat label="Hampir Habis" value={expiringCount} icon={Zap} tone="amber" />
-        <MiniStat label="Sehat" value={students.length - exhaustedCount - expiringCount} icon={CheckCircle2} tone="primary" />
+        <MiniStat label="Kuota Habis" value={exhaustedCount} icon={PackageOpen} tone="destructive" />
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Cari nama / kode / email…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
-        </div>
-        <div className="flex flex-wrap gap-1">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Kode Kursus</Label>
-            <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+      {/* Filters & Actions */}
+      <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Cari nama, kode siswa, atau email…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-9 pl-9 text-sm"
+            />
+          </div>
+
+          {/* Course Filter & Add Button */}
+          <div className="flex items-center gap-2">
+            <select
+              value={courseFilter}
+              onChange={(e) => setCourseFilter(e.target.value)}
+              className="h-9 w-full sm:w-48 rounded-md border border-input bg-background px-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+            >
               <option value="all">Semua Kursus</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
               ))}
             </select>
-          </div>
-          {([
-            ['all', 'Semua'],
-            ['exhausted', 'Habis'],
-            ['expiring', 'Hampir Habis'],
-            ['healthy', 'Sehat'],
-          ] as const).map(([k, l]) => (
+
             <Button
-              key={k}
               size="sm"
-              variant={filter === k ? 'default' : 'outline'}
-              onClick={() => setFilter(k)}
-              className="h-8"
+              onClick={() => { resetForm(); setCreateOpen(true) }}
+              className="h-9 shrink-0 gap-1.5 shadow-xs"
             >
-              {l}
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Tambah Siswa</span>
+              <span className="sm:hidden">Tambah</span>
             </Button>
-          ))}
-          <Button size="sm" onClick={() => { resetForm(); setCreateOpen(true) }} className="h-8 gap-1">
-            <Plus className="h-3.5 w-3.5" /> Tambah
-          </Button>
+          </div>
+        </div>
+
+        {/* Filter Pills with Counts */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {([
+            ['all', 'Semua', students.length],
+            ['healthy', 'Sehat', students.length - exhaustedCount - expiringCount],
+            ['expiring', 'Hampir Habis', expiringCount],
+            ['exhausted', 'Habis', exhaustedCount],
+          ] as const).map(([k, l, count]) => {
+            const active = filter === k
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setFilter(k)}
+                className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all ${
+                  active
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <span>{l}</span>
+                <span className={`text-[10px] rounded-full px-1.5 py-0.5 ${
+                  active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-background text-muted-foreground'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {/* List */}
       <Card className="border-border/60">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
             <Users className="h-4 w-4 text-primary" />
             Daftar Siswa & Kuota ({filtered.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="max-h-[32rem] divide-y divide-border/40 overflow-y-auto scrollbar-thin">
+          <div className="max-h-128 divide-y divide-border/40 overflow-y-auto scrollbar-thin">
             {filtered.map((s) => {
               const pct = s.sessionQuota > 0 ? Math.round((s.sessionsUsed / s.sessionQuota) * 100) : 0
               const expanded = expandedId === s.id
@@ -224,83 +257,127 @@ export function StudentsManage() {
                 <div key={s.id}>
                   <button
                     onClick={() => setExpandedId(expanded ? null : s.id)}
-                    className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted/30"
+                    className="flex w-full items-start gap-3 p-3 sm:p-3.5 text-left transition-colors hover:bg-muted/30"
                   >
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                      s.quotaExhausted ? 'bg-destructive/15 text-destructive' :
-                      s.sessionsRemaining <= 2 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' :
-                      'bg-accent text-accent-foreground'
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold font-mono ${
+                      s.quotaExhausted
+                        ? 'bg-destructive/15 text-destructive border border-destructive/20'
+                        : s.sessionsRemaining <= 2
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/20'
+                          : 'bg-primary/10 text-primary border border-primary/20'
                     }`}>
                       {s.studentCode.slice(-3)}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">{s.name}</span>
-                        <span className="text-[11px] text-muted-foreground">{s.studentCode}</span>
-                        {s.isOnLeave && <Badge variant="outline" className="h-5 gap-1 border-sky-300 bg-sky-50 px-1.5 text-[10px] text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">Sedang cuti</Badge>}
-                        {s.quotaExhausted && <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">Habis</Badge>}
-                        {!s.quotaExhausted && s.sessionsRemaining <= 2 && <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">Hampir Habis</Badge>}
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-semibold text-sm text-foreground leading-snug">{s.name}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">({s.studentCode})</span>
+                        {s.isOnLeave && (
+                          <Badge variant="outline" className="h-4.5 border-sky-300 bg-sky-50 px-1.5 text-[10px] text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+                            Sedang cuti
+                          </Badge>
+                        )}
+                        {s.quotaExhausted && (
+                          <Badge variant="destructive" className="h-4.5 px-1.5 text-[10px]">
+                            Habis
+                          </Badge>
+                        )}
+                        {!s.quotaExhausted && s.sessionsRemaining <= 2 && (
+                          <Badge className="h-4.5 bg-amber-500/90 hover:bg-amber-500 px-1.5 text-[10px] text-white">
+                            Sisa {s.sessionsRemaining}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Progress value={pct} className={`h-1.5 flex-1 ${s.quotaExhausted ? '[&>div]:bg-destructive' : s.sessionsRemaining <= 2 ? '[&>div]:bg-amber-500' : ''}`} />
-                        <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {s.sessionsUsed}/{s.sessionQuota} sesi · {s.uniqueDaysAttended} hari
-                        </span>
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                        <Progress
+                          value={pct}
+                          className={`h-1.5 flex-1 ${
+                            s.quotaExhausted
+                              ? '[&>div]:bg-destructive'
+                              : s.sessionsRemaining <= 2
+                                ? '[&>div]:bg-amber-500'
+                                : '[&>div]:bg-primary'
+                          }`}
+                        />
+                        <div className="flex items-center justify-between sm:justify-start gap-2 text-[11px] text-muted-foreground shrink-0 font-medium">
+                          <span>
+                            <strong className="text-foreground">{s.sessionsRemaining}</strong> sisa dari {s.sessionQuota} sesi
+                          </span>
+                          <span className="text-border">·</span>
+                          <span>{s.uniqueDaysAttended} hari</span>
+                        </div>
                       </div>
                     </div>
-                    {expanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                    <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center text-muted-foreground">
+                      {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
                   </button>
                   {expanded && (
-                    <div className="border-t border-border/40 bg-muted/20 p-3">
+                    <div className="border-t border-border/40 bg-muted/20 p-3 sm:p-4">
                       <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                         <Info label="Sisa Kuota" value={`${s.sessionsRemaining} sesi`} />
                         <Info label="Hadir" value={`${s.sessionsUsed} sesi`} />
                         <Info label="Hari Hadir" value={`${s.uniqueDaysAttended} hari`} />
                         <Info label="Hari Terakhir Absen" value={s.lastCheckIn ? new Date(s.lastCheckIn).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} />
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
                         {s.email && (
-                          <a href={`mailto:${s.email}`} className="flex items-center gap-1 hover:text-primary underline">
-                            <Mail className="h-3 w-3" />{s.email}
+                          <a href={`mailto:${s.email}`} className="inline-flex items-center gap-1.5 hover:text-primary transition-colors">
+                            <Mail className="h-3.5 w-3.5" />
+                            <span>{s.email}</span>
                           </a>
                         )}
                         {s.phone && (
-                          <a href={`https://wa.me/${s.phone.replace(/[^0-9]/g, '')}` +'?text=Halo%20Kak,%20mohon%20maaf%20mengganggu%20waktunya.%20Sekadar%20menginfokan%20ya%20Kak,%20mulai%20tanggal%205%20Oktober%20nanti%20pilihan%20jadwal%20sesi%20yang%20tersedia%20hanya%20ada%20di%20jam%2008.30%E2%80%9310.10%20dan%2010.00%E2%80%9311.30.%20Hal%20ini%20kami%20sesuaikan%20demi%20efisiensi%20waktu%20mengajar%20tutor.%20Terima%20kasih%20banyak%20atas%20pengertiannya%20%F0%9F%99%8F%F0%9F%98%8A%0A'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-600 underline">
-                            <Phone className="h-3 w-3" />{s.phone}
+                          <a
+                            href={`https://wa.me/${s.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Halo Kak ${s.name} (${s.studentCode}), salam dari Ruang PTE Pare Kediri.`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                            <span>{s.phone}</span>
                           </a>
                         )}
-                        {s.lastCheckIn && <span>Terakhir absen: {new Date(s.lastCheckIn).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>}
-                        {s.quotaExtendedAt && <span>Diperpanjang: {new Date(s.quotaExtendedAt).toLocaleDateString('id-ID')}</span>}
+                        {s.lastCheckIn && (
+                          <span className="text-muted-foreground">
+                            Terakhir absen: {new Date(s.lastCheckIn).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </span>
+                        )}
+                        {s.quotaExtendedAt && (
+                          <span className="text-muted-foreground">
+                            Diperpanjang: {new Date(s.quotaExtendedAt).toLocaleDateString('id-ID')}
+                          </span>
+                        )}
                       </div>
                       {/* Extension history */}
                       {s.extensions.length > 0 && (
-                        <div className="mt-3 rounded-lg border border-border/60 bg-card p-2">
-                          <p className="mb-1 flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                            <History className="h-3 w-3" /> Riwayat Perpanjangan ({s.extensions.length})
+                        <div className="mt-3 rounded-lg border border-border/60 bg-card p-2.5">
+                          <p className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                            <History className="h-3.5 w-3.5" /> Riwayat Perpanjangan ({s.extensions.length})
                           </p>
                           <div className="space-y-1">
                             {s.extensions.map((e) => (
-                              <div key={e.id} className="flex items-center justify-between text-[11px]">
+                              <div key={e.id} className="flex items-center justify-between text-xs">
                                 <span>
-                                  <Gift className="mr-1 inline h-3 w-3 text-primary" />
+                                  <Gift className="mr-1 inline h-3.5 w-3.5 text-primary" />
                                   {e.oldQuota} → <strong>{e.newQuota}</strong> (+{e.addedSessions})
                                   {e.reason && <span className="text-muted-foreground"> — {e.reason}</span>}
                                 </span>
-                                <span className="text-muted-foreground">{new Date(e.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}{e.adminName ? ` · ${e.adminName}` : ''}</span>
+                                <span className="text-muted-foreground text-[11px]">{new Date(e.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}{e.adminName ? ` · ${e.adminName}` : ''}</span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
-                      <div className="mt-3 flex flex-wrap justify-end gap-2">
-                        <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => openEdit(s)}>
-                          <Edit3 className="h-3.5 w-3.5" /> Edit
+                      <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
+                        <Button size="sm" variant="outline" className="h-8 gap-1.5 flex-1 sm:flex-initial" onClick={() => openEdit(s)}>
+                          <Edit3 className="h-3.5 w-3.5" /> Edit Data
                         </Button>
-                        <Button size="sm" variant="outline" className="h-8 gap-1 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(s)}>
+                        <Button size="sm" variant="outline" className="h-8 gap-1.5 flex-1 sm:flex-initial text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(s)}>
                           <Trash2 className="h-3.5 w-3.5" /> Hapus
                         </Button>
-                        <Button size="sm" onClick={() => setExtendTarget(s)} className="gap-1.5">
-                          <Plus className="h-3.5 w-3.5" /> Perpanjang Kuota
+                        <Button size="sm" onClick={() => setExtendTarget(s)} className="h-8 gap-1.5 w-full sm:w-auto sm:ml-auto shadow-xs">
+                          <Gift className="h-3.5 w-3.5" /> Perpanjang Kuota
                         </Button>
                       </div>
                     </div>
@@ -347,7 +424,7 @@ export function StudentsManage() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Kode Kursus *</Label>
-              <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" required>
+              <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" required>
                 <option value="">Pilih kode kursus</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
@@ -377,7 +454,7 @@ export function StudentsManage() {
 
       {/* Edit Student Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit3 className="h-4 w-4 text-primary" /> Edit Siswa
@@ -407,7 +484,7 @@ export function StudentsManage() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Kode Kursus</Label>
-              <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="">Pilih kode kursus</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
@@ -418,25 +495,27 @@ export function StudentsManage() {
               <Label className="text-xs">Kuota Sesi</Label>
               <Input type="number" min={1} max={100} value={form.sessionQuota} onChange={(e) => setForm({ ...form, sessionQuota: Number(e.target.value) })} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
-                <Label className="text-xs text-amber-800 dark:text-amber-200">Kurangi Sisa Kuota</Label>
-                <Input type="number" min={0} max={editingStudent?.sessionsRemaining ?? 0} value={form.reduceRemainingBy} onChange={(e) => setForm({ ...form, reduceRemainingBy: Number(e.target.value) })} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-800 dark:bg-amber-950/20">
+                <Label className="text-xs font-semibold text-amber-800 dark:text-amber-200">Kurangi Sisa Kuota</Label>
+                <Input type="number" min={0} max={editingStudent?.sessionsRemaining ?? 0} value={form.reduceRemainingBy} onChange={(e) => setForm({ ...form, reduceRemainingBy: Number(e.target.value) })} className="bg-background" />
                 <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                  Sisa: {editingStudent?.sessionsRemaining ?? 0}. Akan menambah pemakaian.
+                  Sisa: {editingStudent?.sessionsRemaining ?? 0}. Menambah pemakaian.
                 </p>
               </div>
-              <div className="space-y-1.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
-                <Label className="text-xs text-emerald-800 dark:text-emerald-200">Tambah Sisa Kuota</Label>
-                <Input type="number" min={0} max={50} value={form.increaseRemainingBy} onChange={(e) => setForm({ ...form, increaseRemainingBy: Number(e.target.value) })} />
+              <div className="space-y-1.5 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
+                <Label className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">Tambah Sisa Kuota</Label>
+                <Input type="number" min={0} max={50} value={form.increaseRemainingBy} onChange={(e) => setForm({ ...form, increaseRemainingBy: Number(e.target.value) })} className="bg-background" />
                 <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                  Sisa: {editingStudent?.sessionsRemaining ?? 0}. Baru: {((editingStudent?.sessionsRemaining ?? 0) + (form.increaseRemainingBy || 0))} sesi.
+                  Sisa baru: {((editingStudent?.sessionsRemaining ?? 0) + (form.increaseRemainingBy || 0))} sesi.
                 </p>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Password Saat Ini</Label>
-              <Input value={editingStudent?.currentPassword || '-'} readOnly className="bg-muted/50" />
+              <Label className="text-xs">Status Password</Label>
+              <div className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${editingStudent?.hasPassword ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300' : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300'}`}>
+                {editingStudent?.hasPassword ? <><KeyRound className="h-4 w-4" /> PIN sudah diatur</> : <><AlertTriangle className="h-4 w-4" /> Belum ada PIN</>}
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">PIN Baru (kosongkan jika tidak diubah)</Label>
@@ -468,26 +547,29 @@ export function StudentsManage() {
 }
 
 function MiniStat({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof Users; tone: 'primary' | 'amber' | 'destructive' | 'default' }) {
-  const cls = {
-    primary: 'bg-primary/10 text-primary',
-    amber: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-    destructive: 'bg-destructive/10 text-destructive',
-    default: 'bg-muted text-muted-foreground',
+  const toneStyles = {
+    primary: { iconBg: 'bg-primary/10 text-primary', num: 'text-primary' },
+    amber: { iconBg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', num: 'text-amber-600 dark:text-amber-400' },
+    destructive: { iconBg: 'bg-destructive/10 text-destructive', num: 'text-destructive' },
+    default: { iconBg: 'bg-muted text-foreground', num: 'text-foreground' },
   }[tone]
+
   return (
-    <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
-      <Icon className={`mx-auto mb-1 h-4 w-4 ${cls}`} />
-      <div className={`text-xl font-bold ${cls}`}>{value}</div>
-      <div className="text-[10px] text-muted-foreground">{label}</div>
+    <div className="flex flex-col items-center justify-center rounded-xl border border-border/60 bg-card p-3 text-center transition-colors shadow-xs">
+      <div className={`mb-1.5 flex h-8 w-8 items-center justify-center rounded-lg ${toneStyles.iconBg}`}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className={`text-2xl font-bold tracking-tight ${toneStyles.num}`}>{value}</div>
+      <div className="text-[11px] font-medium text-muted-foreground">{label}</div>
     </div>
   )
 }
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="font-medium">{value}</div>
+    <div className="rounded-lg bg-muted/40 p-2 border border-border/30">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-xs font-semibold text-foreground truncate">{value}</div>
     </div>
   )
 }

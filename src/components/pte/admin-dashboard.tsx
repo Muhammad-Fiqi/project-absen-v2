@@ -453,45 +453,47 @@ export function AdminDashboard() {
 
       {/* Admin Multi-Tab Navigation */}
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 xl:grid-cols-6">
-          <TabsTrigger value="students" className="gap-1.5 font-medium">
-            <Users className="h-4 w-4" /> Kelola Siswa
-          </TabsTrigger>
-          <TabsTrigger value="courses" className="gap-1.5 font-medium">
-            <BookOpen className="h-4 w-4" /> Kelola Kursus
-          </TabsTrigger>
-          <TabsTrigger value="sessions" className="gap-1.5 font-medium">
-            <Calendar className="h-4 w-4" /> Kelola Sesi
-          </TabsTrigger>
-          <TabsTrigger value="staff" className="gap-1.5 font-medium">
-            <UserCheck className="h-4 w-4" /> Pengajar & Admin
-          </TabsTrigger>
-          <TabsTrigger value="attendees" className="gap-1.5 font-medium">
-            <BarChart3 className="h-4 w-4" /> Kehadiran Siswa
-          </TabsTrigger>
-          <TabsTrigger value="extensions" className="gap-1.5 font-medium relative">
-            <MailCheck className="h-4 w-4" /> Permintaan Kuota
-            {pendingExtCount > 0 && (
-              <Badge variant="destructive" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
-                {pendingExtCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="leave-requests" className="gap-1.5 font-medium relative">
-            <Calendar className="h-4 w-4" /> Cuti & Izin
-            {pendingLeaveCount > 0 && (
-              <Badge variant="destructive" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
-                {pendingLeaveCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="leaderboard" className="gap-1.5 font-medium">
-            <BarChart3 className="h-4 w-4" /> Leaderboard
-          </TabsTrigger>
-          <TabsTrigger value="absences" className="gap-1.5 font-medium">
-            <UserX className="h-4 w-4" /> Rekap Bolos
-          </TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto pb-1 scrollbar-none">
+          <TabsList className="inline-flex w-max min-w-full justify-start gap-1 p-1 bg-muted/80 backdrop-blur">
+            <TabsTrigger value="students" className="gap-1.5 font-medium px-3 py-1.5 text-xs sm:text-sm">
+              <Users className="h-4 w-4" /> Kelola Siswa
+            </TabsTrigger>
+            <TabsTrigger value="courses" className="gap-1.5 font-medium px-3 py-1.5 text-xs sm:text-sm">
+              <BookOpen className="h-4 w-4" /> Kelola Kursus
+            </TabsTrigger>
+            <TabsTrigger value="sessions" className="gap-1.5 font-medium px-3 py-1.5 text-xs sm:text-sm">
+              <Calendar className="h-4 w-4" /> Kelola Sesi
+            </TabsTrigger>
+            <TabsTrigger value="staff" className="gap-1.5 font-medium px-3 py-1.5 text-xs sm:text-sm">
+              <UserCheck className="h-4 w-4" /> Pengajar & Admin
+            </TabsTrigger>
+            <TabsTrigger value="attendees" className="gap-1.5 font-medium px-3 py-1.5 text-xs sm:text-sm">
+              <BarChart3 className="h-4 w-4" /> Kehadiran Siswa
+            </TabsTrigger>
+            <TabsTrigger value="extensions" className="gap-1.5 font-medium px-3 py-1.5 text-xs sm:text-sm relative">
+              <MailCheck className="h-4 w-4" /> Permintaan Kuota
+              {pendingExtCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
+                  {pendingExtCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="leave-requests" className="gap-1.5 font-medium px-3 py-1.5 text-xs sm:text-sm relative">
+              <Calendar className="h-4 w-4" /> Cuti & Izin
+              {pendingLeaveCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
+                  {pendingLeaveCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="leaderboard" className="gap-1.5 font-medium px-3 py-1.5 text-xs sm:text-sm">
+              <BarChart3 className="h-4 w-4" /> Leaderboard
+            </TabsTrigger>
+            <TabsTrigger value="absences" className="gap-1.5 font-medium px-3 py-1.5 text-xs sm:text-sm">
+              <UserX className="h-4 w-4" /> Rekap Bolos
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Tab 1: Kelola Siswa */}
         <TabsContent value="students" className="animate-fade-in space-y-4">

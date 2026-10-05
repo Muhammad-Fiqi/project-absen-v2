@@ -88,7 +88,7 @@ export async function POST() {
         id: cuidLike(),
         studentCode: s.code,
         name: s.name,
-        pinHash: s.password,
+        pinHash: hashPin(s.password),
         courseCode: courseRow.code,
         courseId: courseId,
         sessionQuota: s.quota,

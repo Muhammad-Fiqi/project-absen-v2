@@ -168,7 +168,8 @@ export interface StudentManageRow {
   name: string
   email: string | null
   phone: string | null
-  currentPassword: string | null
+  courseId: string | null
+  hasPassword: boolean
   sessionQuota: number
   sessionQuotaRemaining: number
   manualQuotaReduction: number

@@ -208,9 +208,9 @@ export function CoursesManage() {
                       <BookOpen className="h-5 w-5" />
                     </div>
                     <div>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        {c.name}
-                        <Badge variant="outline" className="text-[10px]">{c.code}</Badge>
+                      <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                        <span>{c.name}</span>
+                        <Badge variant="outline" className="text-[10px] font-mono">{c.code}</Badge>
                       </CardTitle>
                       <CardDescription className="text-xs">
                         {c.description || 'Tidak ada deskripsi'}
@@ -240,7 +240,7 @@ export function CoursesManage() {
                   <span>Grace before: {c.graceMinutesBefore} mnt</span>
                   <span>Grace after: {c.graceMinutesAfter} mnt</span>
                 </div>
-                <div className="mt-3 flex justify-end gap-1 border-t border-border/40 pt-3">
+                <div className="mt-3 flex justify-end gap-1.5 border-t border-border/40 pt-3">
                   <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => openEdit(c)}>
                     <Edit3 className="h-3.5 w-3.5" /> Edit
                   </Button>
@@ -256,7 +256,7 @@ export function CoursesManage() {
 
       {/* Dialog Create */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-primary" /> Tambah Kursus Baru
@@ -355,7 +355,7 @@ export function CoursesManage() {
 
       {/* Dialog Edit */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit3 className="h-4 w-4 text-primary" /> Edit Kursus

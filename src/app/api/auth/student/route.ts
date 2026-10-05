@@ -3,6 +3,7 @@ import { count, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { student, course, quotaDailyUsage } from '@/db/schema'
 import { applyStudentCookie } from '@/lib/auth'
+import { verifyPin, hashPin } from '@/lib/security'
 import { applyDailyQuotaDeduction, yesterdayKey } from '@/lib/quota'
 
 export const runtime = 'nodejs'
@@ -24,7 +25,25 @@ export async function POST(req: NextRequest) {
     if (!studentRow) {
       return NextResponse.json({ error: 'Kode siswa tidak ditemukan' }, { status: 404 })
     }
-    if (password !== studentRow.pinHash) {
+
+    // Verify PIN: support both hashed (salt:hash) and legacy plain text
+    const storedPin = studentRow.pinHash ?? ''
+    const isHashed = storedPin.includes(':')
+    let pinValid = false
+
+    if (isHashed) {
+      // Modern: verify against scrypt hash
+      pinValid = verifyPin(password, storedPin)
+    } else {
+      // Legacy: plain text comparison (backward compat)
+      pinValid = password === storedPin
+      // Auto-upgrade: rehash plain text PIN to scrypt
+      if (pinValid && storedPin) {
+        await db.update(student).set({ pinHash: hashPin(password) }).where(eq(student.id, studentRow.id))
+      }
+    }
+
+    if (!pinValid) {
       return NextResponse.json({ error: 'Password salah' }, { status: 401 })
     }
 
