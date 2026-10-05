@@ -654,92 +654,109 @@ function DayGroupCard({
             return (
               <div
                 key={s.id}
-                className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 transition-colors ${
+                className={`flex flex-col gap-2.5 rounded-xl border p-3.5 transition-colors ${
                   canCheckIn ? 'border-primary/40 bg-primary/5 hover:bg-primary/10' : 'border-border/60 bg-card'
                 }`}
               >
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                  s.mode === 'online' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' : 'bg-accent text-accent-foreground'
-                }`}>
-                  <ModeIcon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium">{formatSessionCardTitle(s.mode)}</span>
+                {/* Main Card Header */}
+                <div className="flex items-start gap-3">
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg mt-0.5 ${
+                    s.mode === 'online' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' : 'bg-accent text-accent-foreground'
+                  }`}>
+                    <ModeIcon className="h-4 w-4" />
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" /> {fmtTime(s.startTime)}–{fmtTime(s.endTime)}</span>
-                    {s.teacher && <span>· {s.teacher}</span>}
-                    {s.platform && <span>· {s.platform}</span>}
-                  </div>
-                  {(s.mode === 'offline' && s.room || s.mode === 'online' && s.room && !/^https?:\/\//i.test(s.room)) && (
-                    <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-                     Tempat: {s.room}
-                    </p>
-                  )}
-                  {s.notes && (
-                    <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
-                      Catatan: {s.notes}
-                    </p>
-                  )}
-                  {s.mode === 'online' && s.room && /^https?:\/\//i.test(s.room) && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="mt-2 h-7 gap-1 px-2 text-[10px]"
-                      onClick={() => onOpenMeeting({ platform: s.platform, room: s.room! })}
-                    >
-                      <LinkIcon className="h-3 w-3" /> Masuk ke meeting
-                    </Button>
-                  )}
-                  {/* Capacity indicator */}
-                  <div className="mt-1 flex items-center gap-1.5 text-[11px]">
-                    <Users className="h-3 w-3 text-muted-foreground" />
-                    <span className={s.attendeeCount >= s.maxAttendees ? 'font-semibold text-destructive' : 'text-muted-foreground'}>
-                      {s.attendeeCount}/{s.maxAttendees}
-                    </span>
-                    {s.attendeeCount >= s.maxAttendees ? (
-                      <Badge variant="destructive" className="h-4 px-1.5 text-[9px]">PENUH</Badge>
-                    ) : (
-                      <span className="text-muted-foreground/70">({s.maxAttendees - s.attendeeCount} slot)</span>
+
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-foreground truncate">{formatSessionCardTitle(s.mode)}</span>
+
+                      {/* Status / Check-in badge or button */}
+                      <div className="shrink-0">
+                        {canCheckIn ? (
+                          <Button size="sm" onClick={() => onCheckIn(s)} className="h-7 text-xs gap-1 shadow-xs">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Absen
+                          </Button>
+                        ) : attendedSession?.id === s.id ? (
+                          <Badge variant="default" className="gap-1 h-5 text-[10px]">
+                            <CheckCircle2 className="h-3 w-3" /> Hadir
+                          </Badge>
+                        ) : attendedSession ? (
+                          <span className="text-[10px] text-muted-foreground/60">—</span>
+                        ) : isHistory ? (
+                          <Badge variant="outline" className="h-5 text-[10px] text-muted-foreground">Lewat</Badge>
+                        ) : quotaExhausted ? (
+                          <Badge variant="destructive" className="h-5 text-[10px]">Kuota Habis</Badge>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/70">{s.checkInWindow.message}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Time & Details */}
+                    <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" /> {fmtTime(s.startTime)}–{fmtTime(s.endTime)}</span>
+                      {s.teacher && <span>· {s.teacher}</span>}
+                      {s.platform && <span>· {s.platform}</span>}
+                    </div>
+
+                    {(s.mode === 'offline' && s.room || s.mode === 'online' && s.room && !/^https?:\/\//i.test(s.room)) && (
+                      <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        Tempat: {s.room}
+                      </p>
                     )}
-                    {/* Expand button to see who's checked in */}
-                    {!isHistory && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onToggleExpand(expandedSession === s.id ? null : s.id) }}
-                        className="ml-auto flex items-center gap-0.5 text-primary hover:underline"
+
+                    {s.notes && (
+                      <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                        Catatan: {s.notes}
+                      </p>
+                    )}
+
+                    {s.mode === 'online' && s.room && /^https?:\/\//i.test(s.room) && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-1 h-6.5 gap-1 px-2 text-[10px]"
+                        onClick={() => onOpenMeeting({ platform: s.platform, room: s.room! })}
                       >
-                        {expandedSession === s.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                        <span>detail</span>
-                      </button>
+                        <LinkIcon className="h-3 w-3" /> Masuk ke meeting
+                      </Button>
                     )}
+
+                    {/* Capacity row */}
+                    <div className="mt-2 flex items-center justify-between gap-1.5 text-[11px] pt-1.5 border-t border-border/40">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="h-3 w-3 text-muted-foreground" />
+                        <span className={s.attendeeCount >= s.maxAttendees ? 'font-semibold text-destructive' : 'text-muted-foreground font-medium'}>
+                          {s.attendeeCount}/{s.maxAttendees}
+                        </span>
+                        {s.attendeeCount >= s.maxAttendees ? (
+                          <Badge variant="destructive" className="h-4 px-1.5 text-[9px]">PENUH</Badge>
+                        ) : (
+                          <span className="text-muted-foreground/70">({s.maxAttendees - s.attendeeCount} slot)</span>
+                        )}
+                      </div>
+
+                      {/* Expand button to see who's checked in */}
+                      {!isHistory && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onToggleExpand(expandedSession === s.id ? null : s.id) }}
+                          className="flex items-center gap-0.5 text-xs text-primary hover:underline font-medium"
+                        >
+                          {expandedSession === s.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          <span>detail</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {!canCheckIn && !attendedSession && !isHistory && s.checkInWindow.message && (
-                    <p className="mt-0.5 text-[10px] text-muted-foreground/70">{s.checkInWindow.message}</p>
-                  )}
                 </div>
-                {canCheckIn ? (
-                  <Button size="sm" onClick={() => onCheckIn(s)} className="shrink-0 gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Absen
-                  </Button>
-                ) : attendedSession?.id === s.id ? (
-                  <Badge variant="default" className="shrink-0 gap-1">
-                    <CheckCircle2 className="h-3 w-3" /> Hadir
-                  </Badge>
-                ) : attendedSession ? (
-                  <span className="shrink-0 text-[10px] text-muted-foreground/60">—</span>
-                ) : isHistory ? (
-                  <span className="shrink-0 text-[10px] text-muted-foreground/60">lewat</span>
-                ) : quotaExhausted ? (
-                  <span className="shrink-0 text-[10px] text-destructive">kuota habis</span>
-                ) : (
-                  <span className="shrink-0 text-[10px] text-muted-foreground/60">{s.checkInWindow.message}</span>
+
+                {/* Expanded capacity panel */}
+                {expandedSession === s.id && (
+                  <div className="w-full min-w-0 pt-0.5">
+                    <SessionCapacity sessionId={s.id} isOpen={true} />
+                  </div>
                 )}
-                {/* Expanded capacity panel occupies the second flex row. */}
-                <div className="basis-full min-w-0">
-                  <SessionCapacity sessionId={s.id} isOpen={expandedSession === s.id} />
-                </div>
               </div>
               
             )

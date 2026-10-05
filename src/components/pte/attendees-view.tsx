@@ -77,6 +77,17 @@ const STATUS_STYLE: Record<string, { label: string; cls: string; icon: typeof Ch
   excused: { label: 'Izin', cls: 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300', icon: ShieldCheck },
 }
 
+function getAvatarText(code: string, name: string): string {
+  if (code && !code.includes('@') && code.length >= 3) {
+    return code.slice(-3).toUpperCase()
+  }
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
 const QUICK_REASONS = ['Sakit', 'Urusan keluarga', 'Ujian sekolah', 'Acara sekolah', 'Lainnya']
 
 export function AttendeesView({ sessionId }: AttendeesViewProps) {
@@ -340,40 +351,42 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
               const st = STATUS_STYLE[status] || STATUS_STYLE.absent
               const Icon = st.icon
               const canMarkIzin = !a.attendance || a.attendance.status === 'absent'
+              const avatarText = getAvatarText(a.studentCode, a.name)
               return (
-                <div key={a.studentId} className="flex items-center gap-3 p-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
-                    {a.studentCode.slice(-3)}
+                <div key={a.studentId} className="flex items-center gap-2.5 sm:gap-3 p-3 transition-colors hover:bg-muted/20">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-xs font-bold text-accent-foreground font-mono">
+                    {avatarText}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium">{a.name}</span>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="truncate text-sm font-semibold text-foreground">{a.name}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span>{a.studentCode}</span>
-{a.attendance ? (
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground min-w-0">
+                      <span className="truncate font-mono max-w-[120px] sm:max-w-xs">{a.studentCode}</span>
+                      {a.attendance ? (
                         <>
-                          <span>·</span>
-                          <span>{new Date(a.attendance.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="shrink-0">·</span>
+                          <span className="shrink-0">{new Date(a.attendance.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                         </>
                       ) : (
-                        <span>· belum absen</span>
+                        <span className="shrink-0">· belum absen</span>
                       )}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                     {/* Action buttons */}
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-1">
                       {/* Move to another session */}
                       {a.attendance && (
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 gap-1 border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          className="h-7 w-7 sm:w-auto sm:px-2 p-0 gap-1 border-blue-300/60 bg-blue-50/60 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
                           onClick={() => openMoveDialog(a)}
+                          title="Pindah Sesi"
                         >
-                          <MoveDown className="h-3 w-3" />
-                          <span className="hidden sm:inline">Pindah</span>
+                          <MoveDown className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline text-xs">Pindah</span>
                         </Button>
                       )}
                       {/* Kick from session */}
@@ -381,11 +394,12 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 gap-1 border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                          className="h-7 w-7 sm:w-auto sm:px-2 p-0 gap-1 border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
                           onClick={() => openKickDialog(a)}
+                          title="Batalkan Absen"
                         >
-                          <X className="h-3 w-3" />
-                          <span className="hidden sm:inline">Keluarkan</span>
+                          <X className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline text-xs">Batalkan</span>
                         </Button>
                       )}
                       {/* Izin button */}
@@ -398,7 +412,7 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                             onClick={() => openIzinDialog(a)}
                           >
                             <ShieldCheck className="h-3 w-3" />
-                            <span className="hidden sm:inline">Izin</span>
+                            <span className="hidden sm:inline text-xs">Izin</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -407,12 +421,12 @@ export function AttendeesView({ sessionId }: AttendeesViewProps) {
                             onClick={() => openManualAttendanceDialog(a)}
                           >
                             <UserCheck className="h-3 w-3" />
-                            <span className="hidden sm:inline">Absenkan</span>
+                            <span className="hidden sm:inline text-xs">Absenkan</span>
                           </Button>
                         </>
                       )}
                     </div>
-                    <Badge variant="outline" className={`gap-1 border ${st.cls}`}>
+                    <Badge variant="outline" className={`shrink-0 gap-1 border text-xs px-2 py-0.5 ${st.cls}`}>
                       <Icon className="h-3 w-3" />
                       {st.label}
                     </Badge>

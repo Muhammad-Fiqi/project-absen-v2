@@ -253,30 +253,32 @@ export function TeacherDashboard() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-5 max-md:h-[100px]">
-          <TabsTrigger value="sessions" className="gap-1.5"><Calendar className="h-3.5 w-3.5" /> Jadwal</TabsTrigger>
-          <TabsTrigger value="attendees" className="gap-1.5" disabled={!selectedSession}><Users className="h-3.5 w-3.5" /> Kehadiran</TabsTrigger>
-          <TabsTrigger value="students" className="gap-1.5"><Gift className="h-3.5 w-3.5" /> Siswa & Kuota</TabsTrigger>
-          <TabsTrigger value="extensions" className="gap-1.5 relative">
-            <MailCheck className="h-3.5 w-3.5" /> Permintaan
-            {pendingExtCount > 0 && (
-              <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
-                {pendingExtCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="leave-requests" className="gap-1.5 relative">
-            <CalendarDays className="h-3.5 w-3.5" /> Cuti & Izin
-            {pendingLeaveCount > 0 && (
-              <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
-                {pendingLeaveCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="reports" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Laporan</TabsTrigger>
-          <TabsTrigger value="leaderboard" className="gap-1.5"><Trophy className="h-3.5 w-3.5" /> Leaderboard</TabsTrigger>
-        </TabsList>
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+        <div className="w-full overflow-x-auto pb-1 scrollbar-none">
+          <TabsList className="inline-flex w-max min-w-full justify-start gap-1 p-1 bg-muted/80 backdrop-blur">
+            <TabsTrigger value="sessions" className="gap-1.5"><Calendar className="h-3.5 w-3.5" /> Jadwal</TabsTrigger>
+            <TabsTrigger value="attendees" className="gap-1.5" disabled={!selectedSession}><Users className="h-3.5 w-3.5" /> Kehadiran</TabsTrigger>
+            <TabsTrigger value="students" className="gap-1.5"><Gift className="h-3.5 w-3.5" /> Siswa & Kuota</TabsTrigger>
+            <TabsTrigger value="extensions" className="gap-1.5 relative">
+              <MailCheck className="h-3.5 w-3.5" /> Permintaan
+              {pendingExtCount > 0 && (
+                <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
+                  {pendingExtCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="leave-requests" className="gap-1.5 relative">
+              <CalendarDays className="h-3.5 w-3.5" /> Cuti & Izin
+              {pendingLeaveCount > 0 && (
+                <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
+                  {pendingLeaveCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Laporan</TabsTrigger>
+            <TabsTrigger value="leaderboard" className="gap-1.5"><Trophy className="h-3.5 w-3.5" /> Leaderboard</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="sessions" className="mt-0 animate-fade-in">
           {loading ? (
@@ -429,14 +431,14 @@ function LeaveReviewPanel({
             </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {activeLeaves.map((l) => (
-                <div key={l.id} className="rounded-lg border border-border/60 bg-card/80 p-2.5">
-                  <div className="flex items-center justify-between gap-2">
+                <div key={l.id} className="min-w-0 rounded-lg border border-border/60 bg-card/80 p-2.5">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
                     <span className="truncate text-sm font-semibold">{l.studentName}</span>
                     <Badge variant="outline" className="shrink-0 gap-1 border-primary/40 bg-primary/10 text-primary">
                       <Clock className="h-3 w-3" /> {l.daysRemaining} hari lagi
                     </Badge>
                   </div>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{l.studentCode}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{l.studentCode}</p>
                   <p className="mt-1 text-[10px] text-muted-foreground">
                     Cuti s/d {new Date(l.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>

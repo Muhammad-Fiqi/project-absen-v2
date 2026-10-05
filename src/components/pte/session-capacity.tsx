@@ -158,24 +158,30 @@ export function SessionCapacity({ sessionId, isOpen }: SessionCapacityProps) {
           <p className="text-[11px] font-medium text-muted-foreground">
             Sudah absen ({capacity.attendeeList.length}):
           </p>
-          <div className="max-h-40 space-y-1 overflow-y-auto scrollbar-thin">
+          <div className="max-h-48 space-y-1 overflow-y-auto scrollbar-thin">
             {capacity.attendeeList.map((a, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2 rounded-lg bg-background/80 px-2.5 py-1.5 text-xs"
+                className="flex items-center gap-2.5 rounded-lg bg-background/80 px-2.5 py-1.5 text-xs border border-border/30"
               >
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                <span className="min-w-0 flex-1 font-medium">{a.name}</span>
-                <span className="text-muted-foreground">{a.studentCode}</span>
-                <span className="flex items-center gap-0.5 text-muted-foreground">
-                  <Clock className="h-2.5 w-2.5" />
-                  {new Date(a.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-                {a.status === 'late' && (
-                  <Badge variant="outline" className="h-5 px-1.5 text-[9px] text-amber-600">
-                    terlambat
-                  </Badge>
-                )}
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="truncate font-semibold text-foreground">{a.name}</span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground flex items-center gap-0.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      {new Date(a.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span className="font-mono truncate max-w-[180px] sm:max-w-xs">{a.studentCode}</span>
+                    {a.status === 'late' && (
+                      <Badge variant="outline" className="h-3.5 px-1 text-[8px] text-amber-600 border-amber-300">
+                        terlambat
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>

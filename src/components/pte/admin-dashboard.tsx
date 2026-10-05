@@ -164,14 +164,14 @@ function LeaveReviewPanel({
             </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {activeLeaves.map((l) => (
-                <div key={l.id} className="rounded-lg border border-border/60 bg-card/80 p-2.5">
-                  <div className="flex items-center justify-between gap-2">
+                <div key={l.id} className="min-w-0 rounded-lg border border-border/60 bg-card/80 p-2.5">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
                     <span className="truncate text-sm font-semibold">{l.studentName}</span>
                     <Badge variant="outline" className="shrink-0 gap-1 border-primary/40 bg-primary/10 text-primary">
                       <Clock className="h-3 w-3" /> {l.daysRemaining} hari lagi
                     </Badge>
                   </div>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{l.studentCode}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{l.studentCode}</p>
                   <p className="mt-1 text-[10px] text-muted-foreground">
                     Cuti s/d {new Date(l.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
