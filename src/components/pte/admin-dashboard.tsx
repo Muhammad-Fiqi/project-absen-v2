@@ -275,10 +275,6 @@ export function AdminDashboard() {
   const [sessionView, setSessionView] = useState<SessionViewMode>('today')
   const [courses, setCourses] = useState<CourseItem[]>([])
   const [courseFilter, setCourseFilter] = useState('all')
-  const [editForm, setEditForm] = useState({
-    title: '', startTime: '', endTime: '', mode: 'offline' as string,
-    platform: '', room: '', teacher: '', topicOfDay: '', maxAttendees: 10, notes: '', status: '',
-  })
 
   const loadCourses = useCallback(async () => {
     try {
@@ -442,34 +438,7 @@ export function AdminDashboard() {
 
   function openEditSession(s: SessionItem) {
     setEditingSession(s)
-    setEditForm({
-      title: s.title,
-      startTime: s.startTime,
-      endTime: s.endTime,
-      mode: s.mode,
-      platform: s.platform || '',
-      room: s.room || '',
-      teacher: s.teacher || '',
-      topicOfDay: s.topicOfDay || '',
-      maxAttendees: s.maxAttendees,
-      notes: s.notes || '',
-      status: s.status,
-    })
     setEditSessionOpen(true)
-  }
-
-  async function handleEditSessionSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editingSession) return
-    try {
-      await apiPatch(`/api/sessions/${editingSession.id}`, editForm)
-      toast.success('Sesi berhasil diperbarui')
-      setEditSessionOpen(false)
-      setEditingSession(null)
-      await loadSessions()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal memperbarui sesi')
-    }
   }
 
   async function handleDeleteSession(sessionId: string, title: string) {
@@ -944,67 +913,14 @@ export function AdminDashboard() {
       <CreateSessionDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={loadSessions} days={days} />
       <BulkSessionDialog open={bulkOpen} onOpenChange={setBulkOpen} onCreated={loadSessions} />
 
-      {/* Session Edit Dialog */}
-      <Dialog open={editSessionOpen} onOpenChange={setEditSessionOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit3 className="h-4 w-4 text-primary" /> Edit Sesi
-            </DialogTitle>
-            <DialogDescription>
-              Ubah data sesi {editingSession?.title}
-              {editingSession?.course && (
-                <span className="mt-1 block font-medium text-xs text-primary">
-                  Kursus: {editingSession.course.name} ({editingSession.course.code})
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleEditSessionSubmit} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Judul Sesi</Label>
-              <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} required />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Mode</Label>
-                <select value={editForm.mode} onChange={(e) => setEditForm({ ...editForm, mode: e.target.value })} className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm">
-                  <option value="offline">Offline</option>
-                  <option value="online">Online</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Maks Peserta</Label>
-                <Input type="number" min={1} max={100} value={editForm.maxAttendees} onChange={(e) => setEditForm({ ...editForm, maxAttendees: Number(e.target.value) })} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Pengajar</Label>
-                <Input value={editForm.teacher} onChange={(e) => setEditForm({ ...editForm, teacher: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Ruang / Platform</Label>
-                <Input value={editForm.platform} onChange={(e) => setEditForm({ ...editForm, platform: e.target.value })} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Materi (topicOfDay)</Label>
-              <Input value={editForm.topicOfDay} onChange={(e) => setEditForm({ ...editForm, topicOfDay: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Catatan</Label>
-              <Textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={2} />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditSessionOpen(false)}>Batal</Button>
-              <Button type="submit" className="gap-1.5">
-                <Edit3 className="h-4 w-4" /> Simpan Perubahan
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EditSessionDialog
+        open={editSessionOpen}
+        onOpenChange={setEditSessionOpen}
+        session={editingSession}
+        onUpdated={loadSessions}
+        days={days}
+        courses={courses}
+      />
     </div>
   )
 }
@@ -1225,6 +1141,354 @@ function CreateSessionDialog({
             <Button type="submit" disabled={loading} className="gap-1.5">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Buat Sesi
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function extractTimeValue(val?: string | null, fallback = '10:00'): string {
+  if (!val) return fallback
+  const match = val.match(/T(\d{2}:\d{2})/)
+  if (match) return match[1]
+  const colonMatch = val.match(/^(\d{2}:\d{2})/)
+  if (colonMatch) return colonMatch[1]
+  return fallback
+}
+
+function EditSessionDialog({
+  open,
+  onOpenChange,
+  session: sessionToEdit,
+  onUpdated,
+  days,
+  courses,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  session: SessionItem | null
+  onUpdated: () => void
+  days: DayGroup[]
+  courses: CourseItem[]
+}) {
+  const [loading, setLoading] = useState(false)
+  const [staff, setStaff] = useState<StaffItem[]>([])
+  const [form, setForm] = useState({
+    courseId: '',
+    title: '',
+    date: '',
+    startTime: '10:00',
+    endTime: '11:30',
+    mode: 'offline' as 'offline' | 'online',
+    platform: 'Office',
+    room: '',
+    teacher: '',
+    topicOfDay: '',
+    notes: '',
+    maxAttendees: 10,
+  })
+
+  useEffect(() => {
+    async function loadStaff() {
+      try {
+        const res = await apiGet<{ staff: StaffItem[] }>('/api/staff')
+        setStaff(res.staff)
+      } catch {
+        // silent
+      }
+    }
+    if (open) {
+      loadStaff()
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !sessionToEdit) return
+    const s = sessionToEdit
+    const dateStr = s.date
+      ? s.date.slice(0, 10)
+      : (s.startTime ? s.startTime.slice(0, 10) : new Date().toISOString().slice(0, 10))
+
+    const mode = (s.mode === 'online' ? 'online' : 'offline') as 'offline' | 'online'
+
+    setForm({
+      courseId: s.courseId || s.course?.id || '',
+      title: s.title || '',
+      date: dateStr,
+      startTime: extractTimeValue(s.startTime, '10:00'),
+      endTime: extractTimeValue(s.endTime, '11:30'),
+      mode,
+      platform: s.platform || (mode === 'offline' ? 'Office' : 'Google Meet'),
+      room: s.room || '',
+      teacher: s.teacher || '',
+      topicOfDay: s.topicOfDay || '',
+      notes: s.notes || '',
+      maxAttendees: s.maxAttendees || 10,
+    })
+  }, [open, sessionToEdit])
+
+  const handleModeChange = (newMode: 'offline' | 'online') => {
+    setForm((prev) => {
+      let newPlatform = prev.platform
+      if (newMode === 'offline') {
+        if (['Google Meet', 'Discord', 'Zoom', 'Microsoft Teams'].includes(prev.platform)) {
+          newPlatform = 'Office'
+        }
+      } else {
+        if (['Office', 'Kantor Pusat', 'Cabang'].includes(prev.platform)) {
+          newPlatform = 'Google Meet'
+        }
+      }
+
+      let newTitle = prev.title
+      if (newMode === 'online' && prev.title.includes('Offline')) {
+        newTitle = prev.title.replace('Offline', 'Online')
+      } else if (newMode === 'offline' && prev.title.includes('Online')) {
+        newTitle = prev.title.replace('Online', 'Offline')
+      }
+
+      return {
+        ...prev,
+        mode: newMode,
+        platform: newPlatform,
+        title: newTitle,
+      }
+    })
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!sessionToEdit) return
+    if (!form.courseId || !form.date || !form.startTime || !form.endTime) {
+      toast.error('Lengkapi kode kursus, tanggal & jam')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await apiPatch(`/api/sessions/${sessionToEdit.id}`, {
+        courseId: form.courseId,
+        title: form.title,
+        date: form.date,
+        startTime: `${form.date}T${form.startTime}`,
+        endTime: `${form.date}T${form.endTime}`,
+        mode: form.mode,
+        platform: form.platform,
+        room: form.room,
+        teacher: form.teacher,
+        topicOfDay: form.topicOfDay,
+        notes: form.notes,
+        maxAttendees: form.maxAttendees,
+      })
+      toast.success('Sesi berhasil diperbarui')
+      onOpenChange(false)
+      onUpdated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memperbarui sesi')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const platformOptions = form.mode === 'offline'
+    ? ['Office', 'Kantor Pusat', 'Cabang']
+    : ['Google Meet', 'Discord', 'Zoom', 'Microsoft Teams']
+
+  const selectedCourse = courses.find((c) => c.id === form.courseId) || sessionToEdit?.course
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto scrollbar-thin">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Edit3 className="h-4 w-4 text-primary" />
+            Edit Sesi
+          </DialogTitle>
+          <DialogDescription>
+            Ubah data sesi {sessionToEdit?.title || 'ini'}
+            {selectedCourse && (
+              <span className="mt-1 block font-medium text-xs text-primary">
+                Kursus: {selectedCourse.name} ({selectedCourse.code})
+              </span>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Kode Kursus *</Label>
+            <select
+              value={form.courseId}
+              onChange={(e) => setForm({ ...form, courseId: e.target.value })}
+              className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            >
+              <option value="">Pilih kode kursus</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.code} — {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Judul Sesi *</Label>
+            <Input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="Mis. SESI 1 · Offline"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={form.mode === 'offline' ? 'default' : 'outline'}
+              onClick={() => handleModeChange('offline')}
+              className="gap-1.5"
+            >
+              <Building2 className="h-4 w-4" /> Offline
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={form.mode === 'online' ? 'default' : 'outline'}
+              onClick={() => handleModeChange('online')}
+              className="gap-1.5"
+            >
+              <Video className="h-4 w-4" /> Online
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tanggal</Label>
+              <Input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Pengajar</Label>
+              <select
+                value={form.teacher}
+                onChange={(e) => setForm({ ...form, teacher: e.target.value })}
+                className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Pilih pengajar</option>
+                {staff.map((s) => (
+                  <option key={s.id} value={s.name}>
+                    {s.name} ({s.role})
+                  </option>
+                ))}
+                {form.teacher && !staff.some((s) => s.name === form.teacher) && (
+                  <option value={form.teacher}>{form.teacher}</option>
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Jam Mulai</Label>
+              <Input
+                type="time"
+                value={form.startTime}
+                onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Jam Selesai</Label>
+              <Input
+                type="time"
+                value={form.endTime}
+                onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">{form.mode === 'online' ? 'Platform' : 'Tempat'}</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {platformOptions.map((p) => (
+                <Button
+                  key={p}
+                  type="button"
+                  size="sm"
+                  variant={form.platform === p ? 'default' : 'outline'}
+                  onClick={() => setForm({ ...form, platform: p })}
+                  className="h-8"
+                >
+                  {p}
+                </Button>
+              ))}
+            </div>
+            <Input
+              value={form.room}
+              onChange={(e) => setForm({ ...form, room: e.target.value })}
+              placeholder={form.mode === 'online' ? 'Link meeting (opsional)' : 'Nama ruangan (opsional)'}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Maks Peserta</Label>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={form.maxAttendees}
+                onChange={(e) => setForm({ ...form, maxAttendees: Math.max(1, Math.min(100, Number(e.target.value))) })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Materi Hari Ini</Label>
+            <Input
+              value={form.topicOfDay}
+              onChange={(e) => setForm({ ...form, topicOfDay: e.target.value })}
+              placeholder="Mis. Speaking: Read Aloud"
+            />
+            {(() => {
+              const sameDay = days.find((d) => d.dayKey === form.date)
+              if (sameDay?.topicOfDay) {
+                return (
+                  <p className="rounded bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
+                    Hari ini sudah ada materi: <strong>{sameDay.topicOfDay}</strong> — biarkan kosong untuk pakai materi yang sama.
+                  </p>
+                )
+              }
+              return null
+            })()}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-notes" className="text-xs">Catatan (opsional)</Label>
+            <Textarea
+              id="edit-notes"
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={loading} className="gap-1.5">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
+              Simpan Perubahan
             </Button>
           </DialogFooter>
         </form>

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { session, attendance } from '@/db/schema'
+import { session, course, attendance } from '@/db/schema'
 import { getCurrentTeacher } from '@/lib/auth'
+import { normalizeSessionDateTime } from '@/lib/session-time'
 
 export const runtime = 'nodejs'
 
@@ -17,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params
     const body = await req.json()
     const {
-      title, startTime, endTime, mode, platform, room,
+      courseId, date, title, startTime, endTime, mode, platform, room,
       teacher: teacherName, topicOfDay, maxAttendees, notes, status,
     } = body
 
@@ -27,9 +28,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const updates: Partial<typeof session.$inferInsert> = {}
+
+    if (courseId !== undefined && courseId !== null) {
+      const courseRows = await db.select().from(course).where(eq(course.id, courseId)).limit(1)
+      if (courseRows[0]) {
+        updates.courseId = courseId
+      }
+    }
+
+    const dateKey = date ? String(date).slice(0, 10) : (existing[0].date ? existing[0].date.slice(0, 10) : undefined)
+    if (date !== undefined && dateKey && /^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+      updates.date = `${dateKey}T00:00:00`
+    }
+
     if (title !== undefined) updates.title = title.trim()
-    if (startTime !== undefined) updates.startTime = startTime
-    if (endTime !== undefined) updates.endTime = endTime
+    if (startTime !== undefined) {
+      updates.startTime = dateKey ? normalizeSessionDateTime(dateKey, String(startTime)) : String(startTime)
+    }
+    if (endTime !== undefined) {
+      updates.endTime = dateKey ? normalizeSessionDateTime(dateKey, String(endTime)) : String(endTime)
+    }
     if (mode !== undefined) updates.mode = mode
     if (platform !== undefined) updates.platform = platform || null
     if (room !== undefined) updates.room = room || null
