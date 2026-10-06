@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import {
-  Calendar, Plus, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck, Layers, Trophy,
+  Calendar, Plus, Users, BarChart3, Loader2, Clock, MapPin, Play, CheckCircle2, RefreshCw, CalendarDays, AlertCircle, Video, Building2, Sparkles, Gift, MailCheck, Layers, Trophy, BookOpen,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,6 +41,7 @@ export interface StaffItem {
 
 interface SessionItem {
   id: string
+  courseId?: string | null
   sessionNumber: number
   title: string
   date: string
@@ -54,7 +55,7 @@ interface SessionItem {
   maxAttendees: number
   status: string
   notes: string | null
-  course: { code: string; name: string; totalSessions: number }
+  course: { id?: string; code: string; name: string; totalSessions?: number } | null
   _count?: { attendances: number }
 }
 
@@ -507,12 +508,19 @@ function SessionInfoBar({ session, children }: { session: SessionItem; children?
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
+          {session.course && (
+            <Badge variant="secondary" className="gap-1 border-primary/20 bg-primary/10 text-primary font-semibold text-xs">
+              <BookOpen className="h-3 w-3" />
+              {session.course.code}
+            </Badge>
+          )}
           <span className="text-sm font-semibold">{formatSessionCardTitle(session.mode)}</span>
           <Badge variant="outline" className={`gap-1 border ${st.cls}`}><st.icon className="h-3 w-3" /> {st.label}</Badge>
           {session.mode === 'online' && <Badge variant="outline" className="gap-1 border-purple-300 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300"><Video className="h-3 w-3" /> {session.platform}</Badge>}
           {session.mode === 'offline' && <Badge variant="outline" className="gap-1"><Building2 className="h-3 w-3" /> Offline</Badge>}
         </div>
-        <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground mt-0.5">
+          {session.course?.name && <span className="font-medium text-foreground">{session.course.name}</span>}
           <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {fmtDate}</span>
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {fmtTime(session.startTime)}–{fmtTime(session.endTime)}</span>
           {session.teacher && <span>· {session.teacher}</span>}
@@ -540,9 +548,60 @@ function SessionsByDay({
   onSelect: (s: SessionItem) => void
   onUpdateStatus: (id: string, status: string) => void
 }) {
-  const visibleDays = useMemo(() => {
-    return days.filter((d) => getDayGroupView(d) === viewMode)
+  const [courseFilter, setCourseFilter] = useState('all')
+
+  const availableCourses = useMemo(() => {
+    const map = new Map<string, { id: string; code: string; name: string }>()
+    days.forEach((d) => {
+      d.sessions.forEach((s) => {
+        if (s.courseId && !map.has(s.courseId)) {
+          map.set(s.courseId, {
+            id: s.courseId,
+            code: s.course?.code || 'PTE',
+            name: s.course?.name || 'Kursus',
+          })
+        }
+      })
+    })
+    return Array.from(map.values())
+  }, [days])
+
+  const courseSessionCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    days
+      .filter((d) => getDayGroupView(d) === viewMode)
+      .forEach((d) => {
+        d.sessions.forEach((s) => {
+          if (s.courseId) {
+            counts[s.courseId] = (counts[s.courseId] || 0) + 1
+          }
+        })
+      })
+    return counts
   }, [days, viewMode])
+
+  const totalSessionsInView = useMemo(() => {
+    return days
+      .filter((d) => getDayGroupView(d) === viewMode)
+      .reduce((acc, d) => acc + d.sessions.length, 0)
+  }, [days, viewMode])
+
+  const visibleDays = useMemo(() => {
+    return days
+      .map((d) => {
+        if (getDayGroupView(d) !== viewMode) return null
+        const matchingSessions = courseFilter === 'all'
+          ? d.sessions
+          : d.sessions.filter((s) => s.courseId === courseFilter)
+        if (matchingSessions.length === 0) return null
+        return {
+          ...d,
+          sessionCount: matchingSessions.length,
+          sessions: matchingSessions,
+        }
+      })
+      .filter((d): d is DayGroup => d !== null)
+  }, [days, viewMode, courseFilter])
 
   if (days.length === 0) {
     return (
@@ -556,102 +615,247 @@ function SessionsByDay({
   const todayKey = new Date().toISOString().slice(0, 10)
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {(['upcoming', 'today', 'past'] as const).map((mode) => (
-          <Button
-            key={mode}
-            type="button"
-            size="sm"
-            variant={viewMode === mode ? 'default' : 'outline'}
-            onClick={() => onViewModeChange(mode)}
-            className="h-8"
-          >
-            {mode === 'upcoming' && 'Sesi Akan Datang'}
-            {mode === 'today' && 'Sesi Hari Ini'}
-            {mode === 'past' && 'Sesi Lampau'}
-          </Button>
-        ))}
+      {/* Time & Course Filters */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-2">
+            {(['upcoming', 'today', 'past'] as const).map((mode) => (
+              <Button
+                key={mode}
+                type="button"
+                size="sm"
+                variant={viewMode === mode ? 'default' : 'outline'}
+                onClick={() => onViewModeChange(mode)}
+                className="h-8"
+              >
+                {mode === 'upcoming' && 'Sesi Akan Datang'}
+                {mode === 'today' && 'Sesi Hari Ini'}
+                {mode === 'past' && 'Sesi Lampau'}
+              </Button>
+            ))}
+          </div>
+
+          {courseFilter !== 'all' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCourseFilter('all')}
+              className="h-7 text-xs text-muted-foreground hover:text-primary"
+            >
+              Tampilkan Semua Kursus
+            </Button>
+          )}
+        </div>
+
+        {/* Course Filter Bar */}
+        <div className="rounded-xl border border-border/60 bg-muted/30 p-2 sm:p-2.5">
+          <div className="mb-1.5 flex items-center justify-between text-xs">
+            <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-primary" />
+              Pilih Kursus:
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {courseFilter === 'all'
+                ? `Menampilkan seluruh ${availableCourses.length} kursus`
+                : `Menampilkan 1 kursus terpilih`}
+            </span>
+          </div>
+          <div className="w-full overflow-x-auto pb-1 scrollbar-none">
+            <div className="inline-flex w-max min-w-full gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={courseFilter === 'all' ? 'default' : 'outline'}
+                onClick={() => setCourseFilter('all')}
+                className={`h-7 text-xs rounded-lg gap-1.5 ${courseFilter === 'all' ? 'shadow-xs' : 'bg-background'}`}
+              >
+                <BookOpen className="h-3 w-3" />
+                Semua Kursus
+                <Badge variant={courseFilter === 'all' ? 'secondary' : 'outline'} className="ml-0.5 h-4 px-1 text-[10px]">
+                  {totalSessionsInView}
+                </Badge>
+              </Button>
+              {availableCourses.map((c) => {
+                const count = courseSessionCounts[c.id] ?? 0
+                const isSelected = courseFilter === c.id
+                return (
+                  <Button
+                    key={c.id}
+                    type="button"
+                    size="sm"
+                    variant={isSelected ? 'default' : 'outline'}
+                    onClick={() => setCourseFilter(c.id)}
+                    className={`h-7 text-xs rounded-lg gap-1.5 ${isSelected ? 'shadow-xs' : 'bg-background'}`}
+                  >
+                    <span className="font-semibold">{c.code}</span>
+                    <span className="hidden sm:inline text-xs opacity-80 max-w-[130px] truncate">{c.name}</span>
+                    <Badge variant={isSelected ? 'secondary' : 'outline'} className="ml-0.5 h-4 px-1 text-[10px]">
+                      {count}
+                    </Badge>
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       </div>
+
       {visibleDays.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 py-12 text-center text-sm text-muted-foreground">
           <Calendar className="mx-auto mb-2 h-8 w-8 opacity-40" />
           {viewMode === 'upcoming' && 'Belum ada sesi yang akan datang.'}
           {viewMode === 'today' && 'Belum ada sesi untuk hari ini.'}
           {viewMode === 'past' && 'Belum ada sesi lampau.'}
+          {courseFilter !== 'all' && (
+            <p className="mt-1 text-xs text-primary">
+              (Filter kursus sedang aktif — coba ganti ke &quot;Semua Kursus&quot;)
+            </p>
+          )}
         </div>
       ) : null}
+
       {visibleDays.map((d) => {
         const isToday = d.dayKey === todayKey
         const isPast = new Date(d.date).getTime() < new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime()
-        const offlineCount = d.sessions.filter((s) => s.mode === 'offline').length
-        const onlineCount = d.sessions.filter((s) => s.mode === 'online').length
+
+        // Group sessions on this day by course
+        const courseGroupsMap = new Map<string, {
+          courseId: string
+          courseCode: string
+          courseName: string
+          sessions: SessionItem[]
+        }>()
+
+        d.sessions.forEach((s) => {
+          const cId = s.courseId || 'general'
+          const cCode = s.course?.code || 'UMUM'
+          const cName = s.course?.name || 'Kursus Umum'
+          if (!courseGroupsMap.has(cId)) {
+            courseGroupsMap.set(cId, { courseId: cId, courseCode: cCode, courseName: cName, sessions: [] })
+          }
+          courseGroupsMap.get(cId)!.sessions.push(s)
+        })
+
+        const dayCourseGroups = Array.from(courseGroupsMap.values())
+
         return (
           <Card key={d.dayKey} className={`border-border/60 ${isToday ? 'border-primary/40 ring-1 ring-primary/15' : ''}`}>
-            <CardContent className="p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <CardContent className="p-4 space-y-4">
+              {/* Day Header */}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
                 <div>
                   <div className="flex items-center gap-2">
                     {isToday && <Badge className="gap-1 bg-primary text-primary-foreground hover:bg-primary"><Play className="h-3 w-3" /> HARI INI</Badge>}
-                    <h3 className="text-sm font-semibold">
+                    <h3 className="text-sm font-bold sm:text-base">
                       {new Date(d.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </h3>
                     {isPast && <Badge variant="outline" className="text-muted-foreground">Lampau</Badge>}
                   </div>
                   {d.topicOfDay && (
                     <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Sparkles className="h-3 w-3 text-primary" /> {d.topicOfDay}
+                      <Sparkles className="h-3 w-3 text-primary shrink-0" /> {d.topicOfDay}
                     </p>
                   )}
                 </div>
-                <div className="flex gap-1">
-                  <Badge variant="outline" className="gap-1"><Building2 className="h-3 w-3" /> {offlineCount} offline</Badge>
-                  <Badge variant="outline" className="gap-1"><Video className="h-3 w-3" /> {onlineCount} online</Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="outline" className="text-xs">
+                    {d.sessionCount} Sesi Terjadwal
+                  </Badge>
+                  {courseFilter === 'all' && dayCourseGroups.length > 1 && (
+                    <Badge variant="secondary" className="text-xs font-normal">
+                      {dayCourseGroups.length} Kursus Berbeda
+                    </Badge>
+                  )}
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {d.sessions.map((s) => {
-                  const st = STATUS_STYLE[s.status] || STATUS_STYLE.scheduled
-                  const fmtTime = sessionTimeLabel
-                  const ModeIcon = s.mode === 'online' ? Video : Building2
-                  const isSelected = s.id === selectedId
+
+              {/* Course-separated Sub-Panels */}
+              <div className="space-y-3.5">
+                {dayCourseGroups.map((cg) => {
+                  const offlineCount = cg.sessions.filter((s) => s.mode === 'offline').length
+                  const onlineCount = cg.sessions.filter((s) => s.mode === 'online').length
+
                   return (
                     <div
-                      key={s.id}
-                      onClick={() => onSelect(s)}
-                      className={`cursor-pointer rounded-xl border p-3 transition-all hover:border-primary/40 hover:shadow-sm ${
-                        isSelected ? 'border-primary ring-1 ring-primary/30' : 'border-border/60'
-                      }`}
+                      key={cg.courseId}
+                      className="rounded-xl border border-border/70 bg-muted/20 p-3 sm:p-3.5 space-y-3"
                     >
-                      <div className="mb-1 flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <ModeIcon className={`h-3.5 w-3.5 ${s.mode === 'online' ? 'text-purple-600 dark:text-purple-400' : 'text-primary'}`} />
-                          <span className="text-xs font-medium">{formatSessionCardTitle(s.mode)}</span>
+                      {/* Dedicated Course Header */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Badge variant="secondary" className="font-semibold text-xs border-primary/30 bg-primary/10 text-primary shrink-0">
+                            <BookOpen className="mr-1 h-3 w-3" />
+                            {cg.courseCode}
+                          </Badge>
+                          <span className="font-semibold text-xs sm:text-sm truncate text-foreground">
+                            {cg.courseName}
+                          </span>
                         </div>
-                        <Badge variant="outline" className={`h-5 gap-1 px-1 text-[10px] ${st.cls}`}><st.icon className="h-2.5 w-2.5" />{st.label}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <Clock className="h-3 w-3" /> {fmtTime(s.startTime)}–{fmtTime(s.endTime)}
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
-                        {s.teacher && <span>{s.teacher}</span>}
-                        {s.platform && <span>· {s.platform}</span>}
-                      </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Users className="h-3 w-3" /> {s._count?.attendances ?? 0}/{s.maxAttendees}
-                        </span>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          {s.status === 'scheduled' && (
-                            <Button size="sm" variant="ghost" className="h-6 gap-1 px-1.5 text-[10px]" onClick={() => onUpdateStatus(s.id, 'active')}>
-                              <Play className="h-2.5 w-2.5" /> Buka
-                            </Button>
-                          )}
-                          {s.status === 'active' && (
-                            <Button size="sm" variant="ghost" className="h-6 gap-1 px-1.5 text-[10px]" onClick={() => onUpdateStatus(s.id, 'completed')}>
-                              <CheckCircle2 className="h-2.5 w-2.5" /> Selesai
-                            </Button>
-                          )}
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
+                          <Badge variant="outline" className="text-[10px]">
+                            {cg.sessions.length} sesi
+                          </Badge>
+                          {offlineCount > 0 && <span>· {offlineCount} offline</span>}
+                          {onlineCount > 0 && <span>· {onlineCount} online</span>}
                         </div>
+                      </div>
+
+                      {/* Sessions Grid for this Course */}
+                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                        {cg.sessions.map((s) => {
+                          const st = STATUS_STYLE[s.status] || STATUS_STYLE.scheduled
+                          const fmtTime = sessionTimeLabel
+                          const ModeIcon = s.mode === 'online' ? Video : Building2
+                          const isSelected = s.id === selectedId
+                          return (
+                            <div
+                              key={s.id}
+                              onClick={() => onSelect(s)}
+                              className={`cursor-pointer rounded-xl border p-3 transition-all hover:border-primary/50 hover:shadow-sm ${
+                                isSelected ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border/70 bg-card'
+                              }`}
+                            >
+                              <div className="mb-1.5 flex items-start justify-between gap-1.5">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <ModeIcon className={`h-3.5 w-3.5 shrink-0 ${s.mode === 'online' ? 'text-purple-600 dark:text-purple-400' : 'text-primary'}`} />
+                                  <span className="text-xs font-semibold truncate">{formatSessionCardTitle(s.mode)}</span>
+                                </div>
+                                <Badge variant="outline" className={`h-5 shrink-0 gap-1 px-1.5 text-[10px] ${st.cls}`}>
+                                  <st.icon className="h-2.5 w-2.5" />{st.label}
+                                </Badge>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                <Clock className="h-3 w-3 shrink-0" />
+                                <span className="font-medium text-foreground">{fmtTime(s.startTime)}–{fmtTime(s.endTime)}</span>
+                              </div>
+
+                              <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                                {s.teacher && <span>Pengajar: <strong className="font-medium text-foreground">{s.teacher}</strong></span>}
+                                {s.room && <span>· Ruang: {s.room}</span>}
+                                {s.platform && <span>· {s.platform}</span>}
+                              </div>
+
+                              <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2">
+                                <span className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                                  <Users className="h-3.5 w-3.5 text-primary" /> Peserta: {s._count?.attendances ?? 0} / {s.maxAttendees}
+                                </span>
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  {s.status === 'scheduled' && (
+                                    <Button size="sm" variant="ghost" className="h-6 gap-1 px-1.5 text-[10px]" onClick={() => onUpdateStatus(s.id, 'active')}>
+                                      <Play className="h-2.5 w-2.5" /> Buka
+                                    </Button>
+                                  )}
+                                  {s.status === 'active' && (
+                                    <Button size="sm" variant="ghost" className="h-6 gap-1 px-1.5 text-[10px]" onClick={() => onUpdateStatus(s.id, 'completed')}>
+                                      <CheckCircle2 className="h-2.5 w-2.5" /> Selesai
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )

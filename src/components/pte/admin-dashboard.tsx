@@ -44,6 +44,7 @@ export interface StaffItem {
 
 interface SessionItem {
   id: string
+  courseId?: string | null
   sessionNumber: number
   title: string
   date: string
@@ -57,7 +58,7 @@ interface SessionItem {
   maxAttendees: number
   status: string
   notes: string | null
-  course: { code: string; name: string; totalSessions: number }
+  course: { id?: string; code: string; name: string; totalSessions?: number } | null
   _count?: { attendances: number }
 }
 
@@ -272,10 +273,25 @@ export function AdminDashboard() {
   const [editSessionOpen, setEditSessionOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<SessionItem | null>(null)
   const [sessionView, setSessionView] = useState<SessionViewMode>('today')
+  const [courses, setCourses] = useState<CourseItem[]>([])
+  const [courseFilter, setCourseFilter] = useState('all')
   const [editForm, setEditForm] = useState({
     title: '', startTime: '', endTime: '', mode: 'offline' as string,
     platform: '', room: '', teacher: '', topicOfDay: '', maxAttendees: 10, notes: '', status: '',
   })
+
+  const loadCourses = useCallback(async () => {
+    try {
+      const res = await apiGet<{ courses: CourseItem[] }>('/api/courses')
+      setCourses(res.courses)
+    } catch {
+      // silent
+    }
+  }, [])
+
+  useEffect(() => {
+    loadCourses()
+  }, [loadCourses])
 
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true)
@@ -297,9 +313,57 @@ export function AdminDashboard() {
     loadSessions()
   }, [loadSessions])
 
-  const visibleDays = useMemo(() => {
-    return days.filter((d) => getDayGroupView(d) === sessionView)
+  const availableCourses = useMemo(() => {
+    const map = new Map<string, { id: string; code: string; name: string }>()
+    courses.forEach((c) => map.set(c.id, { id: c.id, code: c.code, name: c.name }))
+    sessions.forEach((s) => {
+      if (s.courseId && !map.has(s.courseId)) {
+        map.set(s.courseId, {
+          id: s.courseId,
+          code: s.course?.code || 'PTE',
+          name: s.course?.name || 'Kursus',
+        })
+      }
+    })
+    return Array.from(map.values())
+  }, [courses, sessions])
+
+  const courseSessionCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    days
+      .filter((d) => getDayGroupView(d) === sessionView)
+      .forEach((d) => {
+        d.sessions.forEach((s) => {
+          if (s.courseId) {
+            counts[s.courseId] = (counts[s.courseId] || 0) + 1
+          }
+        })
+      })
+    return counts
   }, [days, sessionView])
+
+  const totalSessionsInView = useMemo(() => {
+    return days
+      .filter((d) => getDayGroupView(d) === sessionView)
+      .reduce((acc, d) => acc + d.sessions.length, 0)
+  }, [days, sessionView])
+
+  const visibleDays = useMemo(() => {
+    return days
+      .map((d) => {
+        if (getDayGroupView(d) !== sessionView) return null
+        const matchingSessions = courseFilter === 'all'
+          ? d.sessions
+          : d.sessions.filter((s) => s.courseId === courseFilter)
+        if (matchingSessions.length === 0) return null
+        return {
+          ...d,
+          sessionCount: matchingSessions.length,
+          sessions: matchingSessions,
+        }
+      })
+      .filter((d): d is DayGroup => d !== null)
+  }, [days, sessionView, courseFilter])
 
   // Extension count auto update
   const loadExtCount = useCallback(async () => {
@@ -524,21 +588,89 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {(['upcoming', 'today', 'past'] as const).map((mode) => (
-              <Button
-                key={mode}
-                type="button"
-                size="sm"
-                variant={sessionView === mode ? 'default' : 'outline'}
-                onClick={() => setSessionView(mode)}
-                className="h-8"
-              >
-                {mode === 'upcoming' && 'Sesi Akan Datang'}
-                {mode === 'today' && 'Sesi Hari Ini'}
-                {mode === 'past' && 'Sesi Lampau'}
-              </Button>
-            ))}
+          {/* Filters: Time Mode & Course Separation */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                {(['upcoming', 'today', 'past'] as const).map((mode) => (
+                  <Button
+                    key={mode}
+                    type="button"
+                    size="sm"
+                    variant={sessionView === mode ? 'default' : 'outline'}
+                    onClick={() => setSessionView(mode)}
+                    className="h-8"
+                  >
+                    {mode === 'upcoming' && 'Sesi Akan Datang'}
+                    {mode === 'today' && 'Sesi Hari Ini'}
+                    {mode === 'past' && 'Sesi Lampau'}
+                  </Button>
+                ))}
+              </div>
+
+              {courseFilter !== 'all' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCourseFilter('all')}
+                  className="h-7 text-xs text-muted-foreground hover:text-primary"
+                >
+                  Tampilkan Semua Kursus
+                </Button>
+              )}
+            </div>
+
+            {/* Course Filter Bar */}
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-2 sm:p-2.5">
+              <div className="mb-1.5 flex items-center justify-between text-xs">
+                <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <BookOpen className="h-3.5 w-3.5 text-primary" />
+                  Pilih Kursus:
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {courseFilter === 'all'
+                    ? `Menampilkan seluruh ${availableCourses.length} kursus`
+                    : `Menampilkan 1 kursus terpilih`}
+                </span>
+              </div>
+              <div className="w-full overflow-x-auto pb-1 scrollbar-none">
+                <div className="inline-flex w-max min-w-full gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={courseFilter === 'all' ? 'default' : 'outline'}
+                    onClick={() => setCourseFilter('all')}
+                    className={`h-7 text-xs rounded-lg gap-1.5 ${courseFilter === 'all' ? 'shadow-xs' : 'bg-background'}`}
+                  >
+                    <BookOpen className="h-3 w-3" />
+                    Semua Kursus
+                    <Badge variant={courseFilter === 'all' ? 'secondary' : 'outline'} className="ml-0.5 h-4 px-1 text-[10px]">
+                      {totalSessionsInView}
+                    </Badge>
+                  </Button>
+                  {availableCourses.map((c) => {
+                    const count = courseSessionCounts[c.id] ?? 0
+                    const isSelected = courseFilter === c.id
+                    return (
+                      <Button
+                        key={c.id}
+                        type="button"
+                        size="sm"
+                        variant={isSelected ? 'default' : 'outline'}
+                        onClick={() => setCourseFilter(c.id)}
+                        className={`h-7 text-xs rounded-lg gap-1.5 ${isSelected ? 'shadow-xs' : 'bg-background'}`}
+                      >
+                        <span className="font-semibold">{c.code}</span>
+                        <span className="hidden sm:inline text-xs opacity-80 max-w-[130px] truncate">{c.name}</span>
+                        <Badge variant={isSelected ? 'secondary' : 'outline'} className="ml-0.5 h-4 px-1 text-[10px]">
+                          {count}
+                        </Badge>
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
 
           {loadingSessions ? (
@@ -551,85 +683,165 @@ export function AdminDashboard() {
               {sessionView === 'upcoming' && 'Belum ada sesi yang akan datang.'}
               {sessionView === 'today' && 'Belum ada sesi untuk hari ini.'}
               {sessionView === 'past' && 'Belum ada sesi lampau.'}
+              {courseFilter !== 'all' && (
+                <p className="mt-1 text-xs text-primary">
+                  (Filter kursus sedang aktif — coba ganti ke &quot;Semua Kursus&quot;)
+                </p>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
-              {visibleDays.map((d) => (
-                <Card key={d.dayKey} className="border-border/60">
-                  <CardContent className="p-4">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <h3 className="text-sm font-semibold">
-                          {new Date(d.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </h3>
-                        {d.topicOfDay && (
-                          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                            <Sparkles className="h-3 w-3 text-primary" /> {d.topicOfDay}
-                          </p>
-                        )}
+              {visibleDays.map((d) => {
+                // Group sessions on this day by course
+                const courseGroupsMap = new Map<string, {
+                  courseId: string
+                  courseCode: string
+                  courseName: string
+                  sessions: SessionItem[]
+                }>()
+
+                d.sessions.forEach((s) => {
+                  const cId = s.courseId || 'general'
+                  const cCode = s.course?.code || 'UMUM'
+                  const cName = s.course?.name || 'Kursus Umum'
+                  if (!courseGroupsMap.has(cId)) {
+                    courseGroupsMap.set(cId, { courseId: cId, courseCode: cCode, courseName: cName, sessions: [] })
+                  }
+                  courseGroupsMap.get(cId)!.sessions.push(s)
+                })
+
+                const dayCourseGroups = Array.from(courseGroupsMap.values())
+
+                return (
+                  <Card key={d.dayKey} className="border-border/60">
+                    <CardContent className="p-4 space-y-4">
+                      {/* Day Header */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
+                        <div>
+                          <h3 className="text-sm font-bold sm:text-base">
+                            {new Date(d.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                          </h3>
+                          {d.topicOfDay && (
+                            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                              <Sparkles className="h-3 w-3 text-primary shrink-0" /> {d.topicOfDay}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className="text-xs">
+                            {d.sessionCount} Sesi Terjadwal
+                          </Badge>
+                          {courseFilter === 'all' && dayCourseGroups.length > 1 && (
+                            <Badge variant="secondary" className="text-xs font-normal">
+                              {dayCourseGroups.length} Kursus Berbeda
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        {d.sessionCount} Sesi Terjadwal
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {d.sessions.map((s) => {
-                        const st = STATUS_STYLE[s.status] || STATUS_STYLE.scheduled
-                        const fmtTime = sessionTimeLabel
-                        const ModeIcon = s.mode === 'online' ? Video : Building2
-                        return (
-                          <div
-                            key={s.id}
-                            className="rounded-xl border border-border/60 p-3 hover:border-primary/40 transition-colors"
-                          >
-                            <div className="mb-1 flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-1.5">
-                                <ModeIcon className={`h-3.5 w-3.5 ${s.mode === 'online' ? 'text-purple-600 dark:text-purple-400' : 'text-primary'}`} />
-                                <span className="text-xs font-semibold">{formatSessionCardTitle(s.mode)}</span>
+
+                      {/* Course-separated Sub-Panels */}
+                      <div className="space-y-3.5">
+                        {dayCourseGroups.map((cg) => {
+                          const offlineCount = cg.sessions.filter((s) => s.mode === 'offline').length
+                          const onlineCount = cg.sessions.filter((s) => s.mode === 'online').length
+
+                          return (
+                            <div
+                              key={cg.courseId}
+                              className="rounded-xl border border-border/70 bg-muted/20 p-3 sm:p-3.5 space-y-3"
+                            >
+                              {/* Dedicated Course Header */}
+                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Badge variant="secondary" className="font-semibold text-xs border-primary/30 bg-primary/10 text-primary shrink-0">
+                                    <BookOpen className="mr-1 h-3 w-3" />
+                                    {cg.courseCode}
+                                  </Badge>
+                                  <span className="font-semibold text-xs sm:text-sm truncate text-foreground">
+                                    {cg.courseName}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {cg.sessions.length} sesi
+                                  </Badge>
+                                  {offlineCount > 0 && <span>· {offlineCount} offline</span>}
+                                  {onlineCount > 0 && <span>· {onlineCount} online</span>}
+                                </div>
                               </div>
-                              <Badge variant="outline" className={`h-5 gap-1 px-1 text-[10px] ${st.cls}`}>
-                                <st.icon className="h-2.5 w-2.5" />{st.label}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                              <Clock className="h-3 w-3" /> {fmtTime(s.startTime)}–{fmtTime(s.endTime)}
-                            </div>
-                            <div className="mt-1 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
-                              {s.teacher && <span>Pengajar: {s.teacher}</span>}
-                            </div>
-                            <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2">
-                              <span className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                                <Users className="h-3.5 w-3.5 text-primary" /> Peserta: {s._count?.attendances ?? 0} / {s.maxAttendees}
-                              </span>
-                              <div className="flex gap-1">
-                                {s.status === 'scheduled' && (
-                                  <Button size="sm" variant="outline" className="h-6 px-1.5 text-[10px]" onClick={() => updateStatus(s.id, 'active')}>
-                                    Buka Sesi
-                                  </Button>
-                                )}
-                                {s.status === 'active' && (
-                                  <Button size="sm" variant="default" className="h-6 px-1.5 text-[10px]" onClick={() => updateStatus(s.id, 'completed')}>
-                                    Tutup Sesi
-                                  </Button>
-                                )}
-                                <Button size="sm" variant="outline" className="h-6 px-1.5 text-[10px]" onClick={() => { setSelectedSession(s); setTab('attendees') }}>
-                                  <Users className="h-3 w-3" /> Lihat Kehadiran
-                                </Button>
-                                <Button size="sm" variant="ghost" className="h-6 w-6 px-0 text-muted-foreground hover:text-primary" onClick={() => openEditSession(s)}>
-                                  <Edit3 className="h-3 w-3" />
-                                </Button>
-                                <Button size="sm" variant="ghost" className="h-6 w-6 px-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteSession(s.id, s.title)}>
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
+
+                              {/* Sessions Grid for this Course */}
+                              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                                {cg.sessions.map((s) => {
+                                  const st = STATUS_STYLE[s.status] || STATUS_STYLE.scheduled
+                                  const fmtTime = sessionTimeLabel
+                                  const ModeIcon = s.mode === 'online' ? Video : Building2
+                                  return (
+                                    <div
+                                      key={s.id}
+                                      className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-3 shadow-2xs hover:border-primary/50 transition-colors"
+                                    >
+                                      <div>
+                                        <div className="mb-1.5 flex items-start justify-between gap-1.5">
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <ModeIcon className={`h-3.5 w-3.5 shrink-0 ${s.mode === 'online' ? 'text-purple-600 dark:text-purple-400' : 'text-primary'}`} />
+                                            <span className="text-xs font-semibold truncate">{formatSessionCardTitle(s.mode)}</span>
+                                          </div>
+                                          <Badge variant="outline" className={`h-5 shrink-0 gap-1 px-1.5 text-[10px] ${st.cls}`}>
+                                            <st.icon className="h-2.5 w-2.5" />{st.label}
+                                          </Badge>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                          <Clock className="h-3 w-3 shrink-0" />
+                                          <span className="font-medium text-foreground">{fmtTime(s.startTime)}–{fmtTime(s.endTime)}</span>
+                                        </div>
+
+                                        <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                                          {s.teacher && <span>Pengajar: <strong className="font-medium text-foreground">{s.teacher}</strong></span>}
+                                          {s.room && <span>· Ruang: {s.room}</span>}
+                                          {s.platform && <span>· {s.platform}</span>}
+                                        </div>
+                                      </div>
+
+                                      <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2">
+                                        <span className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                                          <Users className="h-3.5 w-3.5 text-primary" /> Peserta: {s._count?.attendances ?? 0} / {s.maxAttendees}
+                                        </span>
+                                        <div className="flex items-center gap-1">
+                                          {s.status === 'scheduled' && (
+                                            <Button size="sm" variant="outline" className="h-6 px-1.5 text-[10px]" onClick={() => updateStatus(s.id, 'active')}>
+                                              Buka Sesi
+                                            </Button>
+                                          )}
+                                          {s.status === 'active' && (
+                                            <Button size="sm" variant="default" className="h-6 px-1.5 text-[10px]" onClick={() => updateStatus(s.id, 'completed')}>
+                                              Tutup Sesi
+                                            </Button>
+                                          )}
+                                          <Button size="sm" variant="outline" className="h-6 px-1.5 text-[10px] gap-1" onClick={() => { setSelectedSession(s); setTab('attendees') }}>
+                                            <Users className="h-3 w-3" /> Kehadiran
+                                          </Button>
+                                          <Button size="sm" variant="ghost" className="h-6 w-6 px-0 text-muted-foreground hover:text-primary" onClick={() => openEditSession(s)}>
+                                            <Edit3 className="h-3 w-3" />
+                                          </Button>
+                                          <Button size="sm" variant="ghost" className="h-6 w-6 px-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteSession(s.id, s.title)}>
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
                               </div>
                             </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                          )
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           )}
         </TabsContent>
@@ -667,7 +879,7 @@ export function AdminDashboard() {
                 {sessions.length === 0 && <option value="">Tidak ada sesi tersedia</option>}
                 {sessions.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {new Date(s.startTime).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })} — {s.title} ({s.teacher || 'Tanpa Pengajar'}) — Kapasitas: {s._count?.attendances ?? 0}/{s.maxAttendees}
+                    [{s.course?.code || 'KURSUS'}] {new Date(s.startTime).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })} — {s.title} ({s.teacher || 'Tanpa Pengajar'}) — Kapasitas: {s._count?.attendances ?? 0}/{s.maxAttendees}
                   </option>
                 ))}
               </select>
@@ -741,6 +953,11 @@ export function AdminDashboard() {
             </DialogTitle>
             <DialogDescription>
               Ubah data sesi {editingSession?.title}
+              {editingSession?.course && (
+                <span className="mt-1 block font-medium text-xs text-primary">
+                  Kursus: {editingSession.course.name} ({editingSession.course.code})
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSessionSubmit} className="space-y-3">
